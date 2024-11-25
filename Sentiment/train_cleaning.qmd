@@ -1,0 +1,87 @@
+---
+title: "Untitled"
+format: html
+---
+
+```{python}
+
+import numpy as np
+#Pandas is used for working with data sets.It has functions for analyzing, cleaning, exploring, and manipulating data.
+import pandas as pd
+
+```
+
+```{python}
+
+train_df = pd.read_csv("../Data/raw-data/train.csv")
+train_df.head()
+
+```
+
+```{python}
+
+train_df = pd.read_csv("../Data/raw-data/train.csv")
+
+# Replace all 2's with 1's in the `sentiment` column
+train_df['sentiment'] = train_df['sentiment'].replace(2, 1)
+
+# Save the updated DataFrame to a new CSV file
+updated_train_file_path = "../Data/raw-data/train2.csv"
+train_df.to_csv(updated_train_file_path, index=False)
+
+```
+
+```{python}
+
+train_df2 = pd.read_csv("../Data/raw-data/train2.csv")
+
+train_df2.head()
+
+```
+
+```{python}
+
+fake_tweets_df = pd.read_csv("../Data/raw-data/fake_tweets2.csv")
+
+# Rename the 'tweet' column to 'message'
+fake_tweets_df.rename(columns={'tweet': 'message'}, inplace=True)
+
+# Reorder columns to place 'sentiment' first and 'message' second
+fake_tweets_df = fake_tweets_df[['sentiment', 'message']]
+
+print(fake_tweets_df)
+
+```
+
+
+```{python}
+
+# Concatenate the two dataframes vertically since they have the same structure
+updated_train_df = pd.concat([fake_tweets_df, train_df2], ignore_index=True)
+
+# Save the updated dataframe to a new CSV file
+updated_train_df.to_csv("../Data/raw-data/updated_train.csv", index=False)
+print(updated_train_df)
+
+```
+
+
+
+```{python}
+
+# Save the updated DataFrame back to a CSV file (optional)
+fake_tweets_df.to_csv("../Data/raw-data/train.csv", index=False)
+
+```
+
+```{python}
+
+train_df = pd.read_csv("../Data/raw-data/train.csv")
+
+```
+
+```{python}
+
+print(train_df)
+
+```

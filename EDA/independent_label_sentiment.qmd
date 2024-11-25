@@ -5,9 +5,6 @@ format: html
 
 ```{r}
 
-install.packages("reticulate")
-library(reticulate)
-
 library(ggplot2)
 library(dplyr)
 
@@ -52,7 +49,7 @@ grouped_data <- df %>%
 # Create the stacked bar plot with 4 colors
 ggplot(grouped_data, aes(x = party, y = Count, fill = independent_label)) +
   geom_bar(stat = "identity", position = "stack") +
-  scale_fill_manual(values = c("#76c7c0", "#ff6f61", "#f4e04d", "#9b59b6")) +  # Added fourth color
+  scale_fill_manual(values = c("#76c7c0", "#ff6f61", "#f4e04d", "#9b59b6", "9b59b6")) +  # Added fourth color
   labs(title = "Distribution of Independent Labels by Party",
        x = "Party",
        y = "Count",
@@ -243,28 +240,6 @@ ggplot(df, aes(x = party, y = ideology_score, fill = party)) +
        x = "Party",
        y = "Ideology Score (-1 = Liberal, 1 = Conservative)") +
   theme_minimal()
-
-```
-
-
-```{r}
-
-df %>%
-  group_by(independent_label) %>%
-  summarize(avg_likes = mean(likes),
-            avg_shares = mean(shares),
-            avg_views = mean(views)) %>%
-  pivot_longer(cols = starts_with("avg_"),
-              names_to = "metric",
-              values_to = "value") %>%
-  ggplot(aes(x = independent_label, y = value, fill = metric)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  scale_fill_brewer(palette = "Set2") +
-  labs(title = "Average Engagement by Sentiment",
-       y = "Count",
-       fill = "Metric") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
 

@@ -1,0 +1,365 @@
+---
+title: "Untitled"
+format: html
+---
+
+```{python}
+
+#NumPy can be used to perform a wide variety of mathematical operations on arrays
+import numpy as np
+#Pandas is used for working with data sets.It has functions for analyzing, cleaning, exploring, and manipulating data.
+import pandas as pd
+from pandas import MultiIndex
+
+#Below are comprehensive libraries for creating static, animated, and interactive visualizations.
+import matplotlib.pyplot as plt
+%matplotlib inline
+import itertools
+import seaborn as sns
+from plotly import graph_objects as go
+# set plot style
+sns.set()
+#Regular Expression used for data cleaning
+import re
+
+#Text processing packages
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize, TreebankWordTokenizer
+from nltk.tokenize import RegexpTokenizer
+from nltk.stem.porter import PorterStemmer
+from nltk.stem import WordNetLemmatizer
+import string
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+#Model evaluation packages
+from sklearn.metrics import f1_score
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report 
+from sklearn.metrics import accuracy_score, precision_score,  recall_score
+
+#Packages to split the data for testing and training
+from sklearn.model_selection import train_test_split
+
+#Packages for features selection
+#from mlxtend.feature_selection import SequentialFeatureSelector as sfs
+from mlxtend.plotting import plot_sequential_feature_selection as plot_sfs
+from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import f_classif
+
+#Modelling Packages
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+
+
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.neural_network import MLPClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import LinearSVC
+#
+from sklearn.model_selection import GridSearchCV
+from imblearn.pipeline import make_pipeline
+from sklearn.pipeline import Pipeline
+from sklearn.pipeline import FeatureUnion
+
+#Imbalanced data processing packages
+from imblearn.over_sampling import SMOTE
+from collections import Counter
+from imblearn.combine import SMOTEENN, SMOTETomek
+
+#from sklearn.pipeline import make_pipeline
+
+
+import warnings
+warnings.filterwarnings('ignore')
+
+```
+
+```{python}
+
+# train_df = pd.read_csv("../Data/raw-data/train.csv")
+
+train_df = pd.read_csv("../Data/raw-data/updated_train.csv")
+test_df = pd.read_csv("../Data/raw-data/test.csv")
+
+```
+
+
+```{python}
+
+print(train_df)
+
+```
+
+```{python}
+
+def preprocess(text):
+    """This function takes in pandas dataframe, removes URL hyperlinks, stopwords, punctuation noises, and lemmatize the text."""
+
+    tokenizer = TreebankWordTokenizer() 
+    lemmatizer = WordNetLemmatizer()
+    stopwords_list = stopwords.words('english')
+    point_noise = string.punctuation + '0123456789'
+    
+    cleanText = re.sub(r'http[s]?://(?:[A-Za-z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9A-Fa-f][0-9A-Fa-f]))+', "", text) #Removing URLs...
+    cleanText = re.sub(r'@[a-zA-Z0-9\_\w]+', '', cleanText)#Remove @mentions
+    cleanText = re.sub(r'#[a-zA-Z0-9]+', '', cleanText) #Remove '#' symbols
+    cleanText = re.sub(r'RT', '', cleanText)#Remove RT from text
+    cleanText = cleanText.lower() #Lowering case
+    cleanText = re.sub(r'([https][http][htt][th][ht])', "",cleanText)
+    cleanText = ''.join([word for word in cleanText if word not in point_noise]) #Removing punctuations and numbers.
+    cleanText = "".join(word for word in cleanText if ord(word)<128) #Removing NonAscii
+    cleanText = tokenizer.tokenize(cleanText) #Coverting each words to tokens
+    cleanText = [lemmatizer.lemmatize(word) for word in cleanText if word not in stopwords_list] #Lemmatizing and removing stopwords
+    cleanText = [word for word in cleanText if len(word) >= 2]
+    cleanText = ' '.join(cleanText)
+    #return cleanText
+    return cleanText
+
+```
+
+
+```{python}
+
+train_df['message'] = train_df['message'].apply(preprocess)
+test_df['message'] = test_df['message'].apply(preprocess)
+
+```
+
+```{python}
+
+for tweet in train_df['message'][5000:5010]:
+    print(tweet)
+
+```
+
+```{python}
+
+vector = TfidfVectorizer(ngram_range=(1,20), min_df=2)
+
+```
+
+```{python}
+
+train_features = vector.fit_transform(train_df['message'])
+test_features = vector.transform(test_df['message'])
+
+
+```
+
+```{python}
+
+#Training dataset
+
+X = train_features #Independent Variables also known as Features
+y = train_df['sentiment'] #Dependent Variable also known as Target
+
+#Test dataset
+
+Text_X = test_features #Testing Features
+tweetid = test_df['tweetid'] #Index tweetid.
+
+
+```
+
+```{python}
+
+X_train, X_test, y_train, y_test =train_test_split(X, 
+                                                   y, 
+                                                   test_size=0.2, 
+                                                   shuffle=True,
+                                                   random_state=42)
+
+
+```
+
+```{python}
+
+
+sm = SMOTE()
+
+X_train_sm, y_train_sm = sm.fit_resample(X_train, y_train)
+
+print('Before SMOTE:', Counter(y_train))
+print('After SMOTE:', Counter(y_train_sm))
+
+```
+
+```{python}
+
+names = ['LogisticRegression',  'ForestClassifier', 'NaiveBayes', 'LinearSVM', 'KNNClassifier']
+
+
+```
+
+```{python}
+
+
+classifiers = [
+    LogisticRegression(C=10),
+    RandomForestClassifier(criterion='entropy'),
+    MultinomialNB(alpha=1),
+    LinearSVC(C=10, class_weight=None),
+    KNeighborsClassifier(n_neighbors=10)
+]
+
+```
+
+```{python}
+
+results = []
+models = {}
+for name, clf in zip(names, classifiers):
+    print('Fitting {:s} model.....'.format(name))
+    # We train each model using .fit
+    clf.fit(X_train_sm, y_train_sm)
+    
+    
+    #Predict the Target Class with the below code using .predict
+    print('..... Predicting')
+    y_pred = clf.predict(X_test)
+    train_pred = clf.predict(X_train_sm)
+    
+    #Score the models with the accuracy and F1_score.
+    print('..... Scoring')
+    accuracy = accuracy_score(y_test, y_pred) # Test Accuracy
+    f1_Score = f1_score(y_test, y_pred, average='macro')
+    train_f1_Score = f1_score(y_train_sm, train_pred, average='macro')
+    
+    #Save the results to dictionaries
+    models[name] = clf
+    
+    results.append([name, accuracy, f1_Score, train_f1_Score])
+    
+#Creating a df from the results    
+results = pd.DataFrame(results, columns=['Classifier', 'Accuracy Score', 'F1 Score', 'Train F1 Score'])
+results.set_index('Classifier', inplace=True)
+
+
+```
+
+```{python}
+
+
+imbalanced_results = []
+imbalanced_models = {}
+for name, clf in zip(names, classifiers):
+    print('Fitting {:s} model.....'.format(name))
+    # We train each model using .fit
+    clf.fit(X_train, y_train)
+    
+    
+    #Predict the Target Class with the below code using .predict
+    print('..... Predicting')
+    y_pred = clf.predict(X_test)
+    train_pred = clf.predict(X_train)
+    
+    #Score the models with the accuracy and F1_score.
+    print('..... Scoring')
+    accuracy = accuracy_score(y_test, y_pred) # Test Accuracy
+    f1_Score = f1_score(y_test, y_pred, average='macro')
+    train_f1_Score = f1_score(y_train, train_pred, average='macro')
+    
+    #Save the results to dictionaries
+    imbalanced_models[name] = clf
+    
+    imbalanced_results.append([name, accuracy, f1_Score, train_f1_Score])
+    
+#Creating a df from the results    
+imbalanced_results = pd.DataFrame(imbalanced_results, columns=['Classifier', 'Accuracy Score', 'F1 Score', 'Train F1 Score'])
+imbalanced_results.set_index('Classifier', inplace=True)
+
+```
+
+```{python}
+
+results.sort_values('F1 Score', ascending=False)
+
+```
+
+```{python}
+
+
+imbalanced_results.sort_values('F1 Score', ascending=False)
+
+```
+
+```{python}
+
+# Load Senators dataset
+senators_df = pd.read_csv("../Data/processed-data/Senators.csv")
+
+# Preview the dataset
+print(senators_df.head())
+
+# Preprocess the `message` column (replace with the actual column name in Senators.csv)
+senators_df['message'] = senators_df['message'].apply(preprocess)
+
+# Transform using the already fitted vectorizer
+senators_features = vector.transform(senators_df['message'])
+
+# Apply pre-trained models to the new dataset
+for name, clf in models.items():  # Assuming `models` contains the pre-trained models
+    print(f'Predicting with {name} model...')
+    predictions = clf.predict(senators_features)
+    senators_df[f'{name}_predictions'] = predictions
+
+# Save predictions to a CSV file
+senators_df.to_csv("Senators_predictions2.csv", index=False)
+
+# Preview predictions
+print(senators_df.head())
+
+
+```
+
+```{python}
+
+import pandas as pd
+from sklearn.metrics import accuracy_score, f1_score, classification_report
+
+# Load the predictions CSV
+senators_df = pd.read_csv("Senators_predictions2.csv")
+
+# Define the ground truth and prediction columns
+true_labels = senators_df['sentiment']  # Ground truth sentiment column
+prediction_columns = [
+    'LogisticRegression_predictions',
+    'ForestClassifier_predictions',
+    'NaiveBayes_predictions',
+    'LinearSVM_predictions',
+    'KNNClassifier_predictions'
+]
+
+# Calculate metrics for each model
+metrics = []
+
+for col in prediction_columns:
+    model_name = col.replace('_predictions', '')
+    predictions = senators_df[col]
+    
+    # Calculate accuracy and F1 score
+    accuracy = accuracy_score(true_labels, predictions)
+    f1 = f1_score(true_labels, predictions, average='macro')
+    
+    # Store results
+    metrics.append([model_name, accuracy, f1])
+    
+    # Optional: Print classification report for each model
+    print(f"Classification Report for {model_name}:\n")
+    print(classification_report(true_labels, predictions))
+
+# Create a DataFrame to compare metrics
+metrics_df = pd.DataFrame(metrics, columns=['Model', 'Accuracy', 'F1 Score'])
+
+# Sort by F1 Score for better comparison
+metrics_df = metrics_df.sort_values('F1 Score', ascending=False)
+
+# Display the metrics
+print(metrics_df)
+
+# Save metrics to a CSV for reference
+metrics_df.to_csv("Metrics_Comparison.csv", index=False)
+
+```

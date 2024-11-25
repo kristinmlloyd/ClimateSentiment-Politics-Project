@@ -158,4 +158,3 @@ df['model_label'] = df['model_label'].replace('neural', 'neutral')
 df.to_csv("../Data/processed-data/Senators_sentiment_results.csv", index=False)
 
 ```
-
