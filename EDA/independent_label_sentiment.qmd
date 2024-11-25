@@ -1,0 +1,297 @@
+---
+title: "Untitled"
+format: html
+---
+
+```{r}
+
+install.packages("reticulate")
+library(reticulate)
+
+library(ggplot2)
+library(dplyr)
+
+```
+
+```{r}
+
+df <- read.csv("Data/processed-data/Senators_sentiment_results.csv")
+
+```
+
+```{r}
+
+independent_counts <- df %>%
+  filter(!is.na(independent_label)) %>%
+  count(independent_label)
+
+# Create a bar plot
+ggplot(independent_counts, aes(x = independent_label, y = n, fill = independent_label)) +
+  geom_bar(stat = "identity") +
+  scale_fill_viridis_d() +
+  labs(
+    title = "Distribution of Labels in Independent Label",
+    x = "Label",
+    y = "Count"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r}
+
+library(ggplot2)
+library(dplyr)
+
+# Create grouped data and counts
+grouped_data <- df %>%
+  group_by(party, independent_label) %>%
+  summarise(Count = n(), .groups = 'drop')
+
+# Create the stacked bar plot with 4 colors
+ggplot(grouped_data, aes(x = party, y = Count, fill = independent_label)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual(values = c("#76c7c0", "#ff6f61", "#f4e04d", "#9b59b6")) +  # Added fourth color
+  labs(title = "Distribution of Independent Labels by Party",
+       x = "Party",
+       y = "Count",
+       fill = "Independent Label") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 0),
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5)
+  )
+
+```
+
+```{r}
+
+library(ggplot2)
+library(dplyr)
+library(reshape2)  # for melting the data
+
+# Create ideology bins
+df$ideology_bin <- cut(df$ideology_score, 
+                      breaks = c(-1, -0.5, 0, 0.5, 1),
+                      labels = c('-1 to -0.5', '-0.5 to 0', '0 to 0.5', '0.5 to 1'),
+                      include.lowest = TRUE,
+                      ordered = TRUE)
+
+# Create counts and calculate percentages
+heatmap_data <- df %>%
+  # Filter for only opportunity and risk
+  filter(model_label %in% c("opportunity", "risk")) %>%
+  # Group and count
+  group_by(ideology_bin, model_label) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  # Calculate percentages within each ideology bin
+  group_by(ideology_bin) %>%
+  mutate(percentage = count / sum(count) * 100) %>%
+  ungroup()
+
+# Create the heatmap
+ggplot(heatmap_data, aes(x = model_label, y = ideology_bin, fill = percentage)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%.1f", percentage)), 
+            color = "black", size = 4) +
+  scale_fill_gradient(low = "white", high = "blue") +
+  labs(title = "Heatmap of Ideology Score Ranges by Sentiment (Opportunity and Risk)",
+       x = "Sentiment",
+       y = "Ideology Score Range",
+       fill = "Percentage") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 0, hjust = 0.5),
+    plot.title = element_text(hjust = 0.5)
+  )
+
+```
+
+```{r}
+
+install.packages("tidyverse")
+install.packages("tidyr")
+install.packages("reshape2")
+install.packages("usmap")
+install.packages("dplyr")
+
+```
+
+```{r, warning=FALSE, message=FALSE}
+
+library(tidyverse)
+library(tidyr)
+library(reshape2)
+library(usmap)
+library(dplyr)
+
+```
+
+```{r}
+
+df <- read.csv("Data/processed-data/Senators_sentiment_results.csv")
+
+```
+
+```{r}
+
+state_sentiment <- df %>%
+  filter(!is.na(independent_label)) %>%
+  group_by(state, independent_label) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  group_by(state) %>%
+  mutate(total = sum(count),
+         proportion = count / total) %>%
+  filter(proportion == max(proportion)) %>%
+  select(state, independent_label)
+
+plot_usmap(data = state_sentiment, values = "independent_label", regions = "states") +
+  scale_fill_manual(
+    values = c("opportunity" = "green", 
+              "risk" = "red", 
+              "neutral" = "gray"),
+    name = "Sentiment",
+    breaks = c("opportunity", "risk", "neutral"),  
+    labels = c("opportunity", "risk", "neutral")   
+  ) +
+  labs(title = "Dominant Sentiment by State", 
+       subtitle = "Opportunity vs. Risk") +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 12)
+  )
+
+```
+
+```{r}
+
+# Summarize the data to determine the dominant party per state
+state_party <- df %>%
+  filter(!is.na(party)) %>%
+  group_by(state, party) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  group_by(state) %>%
+  mutate(total = sum(count),
+         proportion = count / total) %>%
+  filter(proportion == max(proportion)) %>%
+  select(state, party)
+
+# Map the data using usmap
+plot_usmap(data = state_party, values = "party", regions = "states") +
+  scale_fill_manual(
+    values = c("R" = "#E81B23", 
+              "D" = "#00AEF3", 
+              "I" = "#A45FE6"),
+    name = "Dominant Party",
+    breaks = c("D", "R", "I"),
+    labels = c("Democratic", "Republican", "Independent")
+  ) +
+  labs(title = "Dominant Party by State", 
+       subtitle = "Based on Voter Distribution") +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 12)
+  )
+
+```
+
+```{r}
+
+# Calculate average ideology score per state
+state_ideology <- df %>%
+  filter(!is.na(ideology_score)) %>%
+  group_by(state) %>%
+  summarise(avg_ideology = mean(ideology_score, na.rm = TRUE))
+
+# Create a custom color gradient from blue to red
+plot_usmap(data = state_ideology, values = "avg_ideology", regions = "states") +
+  scale_fill_gradient2(
+    low = "#0000FF",      # Blue for liberal
+    mid = "#FFFFFF",      # White for moderate
+    high = "#FF0000",     # Red for conservative
+    midpoint = 0,         # Midpoint at 0
+    limits = c(-1, 1),    # Set limits to match score range
+    name = "Ideology Score",
+    labels = scales::label_number(accuracy = 0.1)  # Round to 1 decimal
+  ) +
+  labs(title = "Average Ideology Score by State", 
+       subtitle = "Liberal (-1) to Conservative (1)") +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 12)
+  )
+
+```
+
+```{r}
+
+ggplot(df, aes(x = party, y = ideology_score, fill = party)) +
+  geom_violin(alpha = 0.7) +
+  geom_boxplot(width = 0.2, alpha = 0.7) +
+  scale_fill_manual(values = c("D" = "#00AEF3", 
+                              "R" = "#E81B23", 
+                              "I" = "#A45FE6")) +
+  labs(title = "Distribution of Ideology Scores by Party",
+       x = "Party",
+       y = "Ideology Score (-1 = Liberal, 1 = Conservative)") +
+  theme_minimal()
+
+```
+
+
+```{r}
+
+df %>%
+  group_by(independent_label) %>%
+  summarize(avg_likes = mean(likes),
+            avg_shares = mean(shares),
+            avg_views = mean(views)) %>%
+  pivot_longer(cols = starts_with("avg_"),
+              names_to = "metric",
+              values_to = "value") %>%
+  ggplot(aes(x = independent_label, y = value, fill = metric)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "Average Engagement by Sentiment",
+       y = "Count",
+       fill = "Metric") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r}
+
+colnames(df)
+
+```
+
+```{r}
+
+library(dplyr)
+
+# Get unique senators by state
+senator_summary <- df %>%
+  mutate(full_name = paste(first, last)) %>%  
+  distinct(state, full_name, party) %>%      # Remove duplicates
+  arrange(state, full_name) %>%              
+  group_by(state) %>%
+  summarise(
+    Senators = paste(paste(full_name, paste0("(", party, ")"), sep = " "), 
+                    collapse = ", "),
+    Count = n()
+  ) %>%
+  ungroup()
+
+# Print the results
+print(senator_summary, n = Inf)
+
+```
