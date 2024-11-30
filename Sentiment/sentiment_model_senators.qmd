@@ -29,8 +29,8 @@ from collections import Counter
 
 ```{python}
 
-train_df = pd.read_csv("../Data/raw-data/hi5.csv")
-test_df = pd.read_csv("../Data/processed-data/Senators.csv")
+train_df = pd.read_csv("../Data/raw-data/train.csv")
+test_df = pd.read_csv("../Data/raw-data/Senators.csv")
 
 ```
 
