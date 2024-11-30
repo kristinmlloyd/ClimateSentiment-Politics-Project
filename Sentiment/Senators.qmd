@@ -15,7 +15,7 @@ from sklearn.decomposition import LatentDirichletAllocation
 
 ```{python}
 
-df = pd.read_csv("../Data/raw-data/Senators.csv")
+df = pd.read_csv("../Data/processed-data/Senators.csv")
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model_name = "climatebert/distilroberta-base-climate-sentiment"
