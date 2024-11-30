@@ -12,7 +12,7 @@ library(dplyr)
 
 ```{r}
 
-df <- read.csv("Data/processed-data/Senators_sentiment_results.csv")
+df <- read.csv("Data/processed-data/Senators_sentiment.csv")
 
 ```
 
