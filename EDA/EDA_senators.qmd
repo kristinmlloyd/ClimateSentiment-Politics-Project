@@ -1,0 +1,495 @@
+---
+title: "Untitled"
+format: html
+---
+
+```{r}
+
+options(repos = c(CRAN = "https://cran.rstudio.com"))
+install.packages("tidyverse")
+library(tidyverse)
+
+```
+
+```{r}
+
+df <- read.csv("Data/processed-data/Senators_sentiment.csv")
+
+```
+
+```{r}
+
+senator_summary <- df %>%
+  mutate(full_name = paste(first, last)) %>%  
+  distinct(state, full_name, party) %>%  
+  arrange(state, full_name) %>%             
+  group_by(state) %>%
+  summarise(
+    Senators = paste(paste(full_name, paste0("(", party, ")"), sep = " "), 
+                     collapse = ", "),       
+    Count = n()               
+  ) %>%
+  ungroup()
+  
+print(senator_summary, n = Inf)
+
+```
+
+```{r}
+
+independent_counts <- df %>%
+  filter(!is.na(sentiment)) %>%
+  count(sentiment)
+
+independent_counts <- independent_counts %>%
+  mutate(sentiment = factor(sentiment, levels = c(-1, 1), labels = c("Risk", "Opportunity")))
+
+ggplot(independent_counts, aes(x = sentiment, y = n, fill = sentiment)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("Risk" = "red", "Opportunity" = "#078d0f")) +
+  labs(
+    title = "Distribution of Sentiments",
+    x = "Sentiment",
+    y = "Count",
+    fill = "Sentiment Type"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+Opportunity sentiment is more prevalent than risk sentiment, indicating that the Senate elected in the 2024 election generally has a proactive stance on addressing challenges and pursuing solutions.
+
+```{r}
+
+grouped_data <- df %>%
+  filter(!is.na(sentiment)) %>%
+  group_by(party, sentiment) %>%
+  summarise(Count = n(), .groups = 'drop') %>%
+  group_by(party) %>%
+  mutate(Proportion = Count / sum(Count)) 
+
+grouped_data <- grouped_data %>%
+  mutate(sentiment = factor(sentiment, levels = c(-1, 1), labels = c("Risk", "Opportunity")))
+
+# Mosaic Plot
+ggplot(grouped_data, aes(x = party, y = Proportion, fill = sentiment)) +
+  geom_bar(stat = "identity", position = "fill") +
+  scale_fill_manual(values = c("Risk" = "red", "Opportunity" = "#078d0f")) +
+  labs(
+    title = "Proportional Distribution of Sentiments by Party",
+    x = "Party",
+    y = "Proportion",
+    fill = "Sentiment Type"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 0),
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5)
+  )
+
+```
+
+Democratic and Indepdent senators overwhelmingly view climate change as a very real challenge that they want to tackle. Republicans view addressing climate change as more of a risk. 
+
+```{r}
+
+heatmap_data <- df %>%
+  mutate(
+    ideology_bin = cut(ideology_score, 
+                      breaks = seq(-1, 1, by = 0.2),
+                      labels = c("-1.0 to -0.8", 
+                               "-0.8 to -0.6", 
+                               "-0.6 to -0.4", 
+                               "-0.4 to -0.2", 
+                               "-0.2 to 0.0",
+                               "0.0 to 0.2",
+                               "0.2 to 0.4",
+                               "0.4 to 0.6",
+                               "0.6 to 0.8",
+                               "0.8 to 1.0")),
+    sentiment = ifelse(sentiment == 1, "Opportunity", "Risk")
+  ) %>%
+  group_by(ideology_bin, sentiment) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  group_by(ideology_bin) %>%
+  mutate(percentage = (count / sum(count)) * 100) %>%
+  ungroup()
+
+heatmap_data <- heatmap_data %>%
+  filter(!is.na(ideology_bin))
+
+# Heatmap
+ggplot(heatmap_data, aes(x = sentiment, y = ideology_bin, fill = percentage)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%.1f", percentage)), 
+            color = "black", size = 4) +
+  scale_fill_gradientn(
+    colors = c("darkred", "red", "yellow", "lightgreen", "darkgreen"),  
+    values = scales::rescale(c(0, 25, 50, 75, 100))  
+  ) +
+  labs(
+    title = "Heatmap of Ideology Score Ranges by Sentiment (Risk and Opportunity)",
+    x = "Sentiment",
+    y = "Ideology Score Range",
+    fill = "Percentage"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 0, hjust = 0.5),
+    axis.text.y = element_text(hjust = 1),
+    plot.title = element_text(hjust = 0.5)
+  )
+
+```
+
+The ideology score range represents the political spectrum of the senators, -1.0 to -0.6: Strongly liberal
+0.0 to 0.2: Moderately liberal
+0.2 to 0.4: Slightly conservative
+0.4 to 0.6: Moderately conservative
+0.6 to 1.0: Strongly conservative. 
+Risk sentiment is not introduced until the 0.2-0.4 range, with sentiment getting more and more risky. It is fully risk from 0.8 to 1. 
+
+```{r}
+
+install.packages("tidyverse")
+install.packages("tidyr")
+install.packages("reshape2")
+install.packages("usmap")
+install.packages("dplyr")
+library(tidyverse)
+library(tidyr)
+library(reshape2)
+library(usmap)
+library(dplyr)
+
+```
+
+```{r}
+
+library(dplyr)
+library(usmap)
+library(ggplot2)
+
+df <- df %>%
+  mutate(state = tolower(state.name[match(state, state.abb)])) 
+
+state_senators <- df %>%
+  distinct(state, party) %>%                           
+  group_by(state) %>%
+  summarise(
+    party_composition = case_when(
+      all(party == "R") ~ "Republican",
+      all(party == "D") ~ "Democrat",
+      any(party == "I") & all(party %in% c("I", "D")) ~ "Split (Independent & Democrat)", 
+      any(party == "I") & all(party %in% c("I", "R")) ~ "Split (Independent & Republican)",
+      TRUE ~ "Split (Republican & Democrat)"
+    ),
+    .groups = "drop"
+  )
+
+party_colors <- c(
+  "Republican" = "red",
+  "Democrat" = "blue",
+  "Split (Independent & Democrat)" = "yellow",
+  "Split (Independent & Republican)" = "orange",
+  "Split (Republican & Democrat)" = "purple"
+)
+
+plot_usmap(data = state_senators, values = "party_composition", regions = "states") +
+  scale_fill_manual(
+    values = party_colors,
+    name = "Party Composition"
+  ) +
+  labs(
+    title = "Senator Party Composition by State",
+    subtitle = "Republican, Democrat, Independent, or Split"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    panel.background = element_rect(fill = "white"),
+    panel.grid = element_blank()
+  )
+
+```
+
+Most states elect senators from the same party, with the exception of Wisconsin, Pennsylvania, Maine, and Vermont.
+
+```{r}
+
+state_sentiment <- df %>%
+  filter(!is.na(sentiment)) %>%                
+  group_by(state, sentiment) %>%
+  summarise(count = n(), .groups = "drop") %>% 
+  group_by(state) %>%
+  mutate(
+    total = sum(count),                        
+    proportion = count / total               
+  ) %>%
+  filter(proportion == max(proportion)) %>%    
+  mutate(sentiment_label = case_when(          
+    sentiment == -1 ~ "risk",
+    sentiment == 1 ~ "opportunity"
+  )) %>%
+  select(state, sentiment_label)
+
+plot_usmap(data = state_sentiment, values = "sentiment_label", regions = "states") +
+  scale_fill_manual(
+    values = c("opportunity" = "green", 
+               "risk" = "red"),               
+    name = "Sentiment",
+    breaks = c("opportunity", "risk"),  
+    labels = c("Opportunity", "Risk")        
+  ) +
+  labs(
+    title = "Dominant Sentiment by State", 
+    subtitle = "Opportunity vs. Risk"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 12)
+  )
+
+```
+
+States with split Senators have opportunity as their dominant sentiment. 
+
+```{r}
+
+state_sentiment <- df %>%
+  filter(!is.na(sentiment)) %>%               
+  group_by(state, sentiment) %>%
+  summarise(count = n(), .groups = "drop") %>% 
+  group_by(state) %>%
+  mutate(
+    total = sum(count),                        
+    proportion = count / total              
+  ) %>%
+  summarise(
+    max_proportion = max(proportion),       
+    sentiment_label = case_when(
+      max_proportion < 0.6 ~ "mixed",         
+      sentiment[which.max(proportion)] == -1 ~ "risk", 
+      sentiment[which.max(proportion)] == 1 ~ "opportunity"
+    ),
+    .groups = "drop"
+  )
+
+# Plot the US map with mixed sentiment
+plot_usmap(data = state_sentiment, values = "sentiment_label", regions = "states") +
+  scale_fill_manual(
+    values = c(
+      "opportunity" = "green", 
+      "risk" = "red", 
+      "mixed" = "purple"          
+    ),
+    name = "Sentiment",
+    breaks = c("opportunity", "risk", "mixed"),
+    labels = c("Opportunity", "Risk", "Mixed") 
+  ) +
+  labs(
+    title = "Sentiment Distribution by State", 
+    subtitle = "Opportunity, Risk, or Mixed Sentiment"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 12)
+  )
+
+```
+
+Wisconsin is split in terms of Senators and sentiment. South Dakota and Alaska also have split sentiment. 
+
+```{r}
+
+# Scatter plot for sentiment vs. ideology by party
+ggplot(df, aes(x = ideology_score, y = sentiment, color = party)) +
+  geom_jitter(alpha = 0.6, width = 0.1, height = 0.1) +  
+  scale_color_manual(values = c("D" = "#00AEF3", "R" = "#E81B23", "I" = "#A45FE6")) +
+  labs(
+    title = "Sentiment vs. Ideology by Party",
+    x = "Ideology Score (-1 = Liberal, 1 = Conservative)",
+    y = "Sentiment (-1 = Risk, 1 = Opportunity)",
+    color = "Party"
+  ) +
+  theme_minimal()
+
+```
+
+Democrats and Independents show a unified opportunity-oriented sentiment. Republicans exhibit a split, with a mix of opportunity and risk perceptions. 
+
+```{r}
+
+# Create correlation analysis between ideology_score and sentiment
+ggplot(df, aes(x = ideology_score, y = sentiment)) +
+  geom_point(aes(color = party), alpha = 0.6) +
+  geom_smooth(method = "lm", se = TRUE) +
+  scale_color_manual(values = c("D" = "#00AEF3", "R" = "#E81B23", "I" = "#A45FE6")) +
+  labs(title = "Correlation between Ideology Score and Sentiment",
+       x = "Ideology Score",
+       y = "Sentiment",
+       color = "Party") +
+  theme_minimal()
+
+```
+
+The strong linear trend highlights the polarization between liberals and conservatives regarding climate sentiment. The presence of some conservative senators with opportunity-oriented sentiment (red points at Y = 1) indicates areas for potential collaboration on climate policy.
+
+## Region
+
+
+```{r}
+
+df %>%
+  mutate(region = case_when(
+    state %in% c("maine", "vermont", "new hampshire", "massachusetts", 
+                 "rhode island", "connecticut", "new york", "pennsylvania", 
+                 "new jersey", "maryland", "delaware") ~ "Northeast",
+    state %in% c("florida", "georgia", "alabama", "south carolina", 
+                 "north carolina", "virginia", "west virginia", "kentucky",
+                 "tennessee", "mississippi", "louisiana", "arkansas", "texas", "oklahoma") ~ "South",
+    state %in% c("north dakota", "south dakota", "nebraska", "kansas", 
+                 "minnesota", "iowa", "missouri", "wisconsin", "illinois", 
+                 "indiana", "michigan", "ohio") ~ "Midwest",
+    state %in% c("washington", "oregon", "california", "nevada", "idaho", 
+                 "montana", "wyoming", "utah", "colorado", "arizona", 
+                 "new mexico", "alaska", "hawaii") ~ "West"
+
+```
+
+```{r}
+
+  )) %>%
+  group_by(region, party) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  ggplot(aes(x = region, y = count, fill = party)) +
+  geom_bar(stat = "identity", position = "fill") +
+  scale_fill_manual(values = c("R" = "#E81B23", "D" = "#00AEF3", "I" = "#A45FE6")) +
+  labs(
+    title = "Party Composition by Region",
+    subtitle = "Distribution of Political Parties Across US Regions",
+    x = "Region",
+    y = "Proportion",
+    fill = "Party"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    legend.position = "bottom"
+  )
+
+```
+
+```{r}
+
+df %>%
+  mutate(region = case_when(
+    state %in% c("maine", "vermont", "new hampshire", "massachusetts", 
+                 "rhode island", "connecticut", "maryland", "delaware", "new york", "pennsylvania", 
+                 "new jersey") ~ "Northeast",
+    state %in% c("florida", "georgia", "alabama", "south carolina", 
+                 "north carolina", "virginia", "west virginia", "kentucky",
+                 "tennessee", "mississippi", "louisiana", "arkansas", "oklahoma", "texas") ~ "South",
+    state %in% c("north dakota", "south dakota", "nebraska", "kansas", 
+                 "minnesota", "iowa", "missouri", "wisconsin", "illinois", 
+                 "indiana", "michigan", "ohio") ~ "Midwest",
+    state %in% c("washington", "oregon", "california", "nevada", "idaho", 
+                 "montana", "wyoming", "utah", "colorado", "arizona", 
+                 "new mexico", "alaska", "hawaii") ~ "West"
+  )) %>%
+  mutate(sentiment_label = case_when(
+    sentiment == -1 ~ "Risk",
+    sentiment == 1 ~ "Opportunity",
+    TRUE ~ "Other"
+  )) %>%
+  group_by(region, sentiment_label) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  ggplot(aes(x = region, y = count, fill = sentiment_label)) +
+  geom_bar(stat = "identity", position = "fill") +
+  scale_fill_manual(values = c(
+    "Risk" = "#E74C3C",
+    "Opportunity" = "#2ECC71",
+    "Other" = "#95A5A6"
+  )) +
+  labs(
+    title = "Risk-Opportunity Distribution by Region",
+    subtitle = "Distribution of Risk (-1) vs Opportunity (1) Sentiment",
+    x = "Region",
+    y = "Proportion",
+    fill = "Assessment"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    legend.position = "bottom"
+  )
+
+```
+
+## Statistical Tests
+
+Null Hypothesis: There is no association between a senator's party affiliation (Democrat, Independent, Republican) and their sentiment (Risk, Opportunity).
+
+Alternate Hypothesis: There is a significant association between a senator's party affiliation (Democrat, Independent, Republican) and their sentiment (Risk, Opportunity).
+
+```{r}
+
+# Create a contingency table for Party and Sentiment
+party_sentiment_table <- table(df$party, df$sentiment)
+
+# Perform a permutation test
+perm_test_party <- chisq_test(party_sentiment_table, distribution = approximate(B = 10000))
+
+# Print results
+print("Permutation test for Party and Sentiment:")
+print(perm_test_party)
+
+```
+
+chi-squared: 190.38
+p-val: 0.0004
+Since the p-value is < 0.05, we reject the null hypothesis and conclude that party affiliation is significantly associated with sentiment.
+
+```{r}
+
+# Create a contingency table for Region and Sentiment
+region_sentiment_table <- table(df$region, df$sentiment)
+
+# Perform a permutation test
+region_perm_test <- chisq_test(region_sentiment_table, distribution = approximate(B = 10000))
+
+# Print results
+print("Permutation test for Region and Sentiment:")
+print(region_perm_test)
+
+```
+
+
+
+```{r}
+
+ggplot(df, aes(x = party, y = ideology_score, fill = party)) +
+  geom_violin(alpha = 0.7) +
+  geom_boxplot(width = 0.2, alpha = 0.7) +
+  scale_fill_manual(values = c("D" = "#00AEF3", 
+                              "R" = "#E81B23", 
+                              "I" = "#A45FE6")) +
+  labs(title = "Distribution of Ideology Scores by Party",
+       x = "Party",
+       y = "Ideology Score (-1 = Liberal, 1 = Conservative)") +
+  theme_minimal()
+
+```
+
