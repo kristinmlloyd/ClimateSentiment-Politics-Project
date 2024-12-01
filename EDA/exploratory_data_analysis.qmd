@@ -28,7 +28,8 @@ library(ggplot2)
 
 ```{r}
 
-df <- read.csv("Data/processed-data/Senators_sentiment.csv")
+df <- read.csv("../Data/processed-data/Senators_sentiment.csv")
+head(df)
 
 ```
 
@@ -294,11 +295,13 @@ Let's do some analysis by region now, starting with some maps.
 
 ```{r}
 
+df <- read.csv("../Data/processed-data/Senators_sentiment.csv")
+
 df <- df %>%
-  mutate(state = tolower(state.name[match(state, state.abb)])) 
+  mutate(state = tolower(state.name[match(state, state.abb)]))  # Match state abbreviations to full names
 
 state_senators <- df %>%
-  distinct(state, party) %>%                           
+  distinct(state, party) %>%  # Ensure unique combinations of state and party
   group_by(state) %>%
   summarise(
     party_composition = case_when(
@@ -319,6 +322,7 @@ party_colors <- c(
   "Split (Republican & Democrat)" = "purple"
 )
 
+# Plot Map
 plot_usmap(data = state_senators, values = "party_composition", regions = "states") +
   scale_fill_manual(
     values = party_colors,
@@ -342,6 +346,8 @@ plot_usmap(data = state_senators, values = "party_composition", regions = "state
 Most states elect senators from the same party, with the exception of Wisconsin, Pennsylvania, Maine, and Vermont. 
 
 ```{r}
+
+df <- read.csv("../Data/processed-data/Senators_sentiment.csv")
 
 df <- df %>%
   mutate(state = tolower(state.name[match(state, state.abb)])) 
@@ -379,6 +385,8 @@ plot_usmap(data = state_senators, values = "avg_ideology_score", regions = "stat
 The map shows the average ideology score of senators by state, with blue indicating liberal states, red indicating conservative states, and white representing neutral ideology. A majority of states seem to be moderate deocrat or moderate republican. There are only a few states with brighter blue/red values. 
 
 ```{r}
+
+df <- read.csv("../Data/processed-data/Senators_sentiment.csv")
 
 state_sentiment <- df %>%
   filter(!is.na(sentiment)) %>%               
