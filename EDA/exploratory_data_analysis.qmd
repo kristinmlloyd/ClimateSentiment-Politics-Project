@@ -1,0 +1,333 @@
+---
+title: "Exploratory Data Analysis"
+author: “Kristin Lloyd”
+format: 
+  html:
+    toc: true
+    embed-resources: true
+    code-fold: true
+---
+
+```{r}
+
+options(repos = c(CRAN = "https://cran.rstudio.com"))
+install.packages("tidyverse")
+install.packages("usmap")
+install.packages("networkD3")
+install.packages("coin")
+library(tidyverse)
+library(tidyr)
+library(reshape2)
+library(usmap)
+library(dplyr)
+library(networkD3)
+library(coin)
+
+```
+
+```{r}
+
+df <- read.csv("Data/processed-data/Senators_sentiment.csv")
+
+```
+
+```{r}
+
+senator_summary <- df %>%
+  mutate(full_name = paste(first, last)) %>%  
+  distinct(state, full_name, party) %>%  
+  arrange(state, full_name) %>%             
+  group_by(state) %>%
+  summarise(
+    Senators = paste(paste(full_name, paste0("(", party, ")"), sep = " "), 
+                     collapse = ", "),       
+    Count = n()               
+  ) %>%
+  ungroup()
+  
+print(senator_summary, n = Inf)
+
+```
+
+Each state except for Ohio has two senators. Ohio currently has one senator because J.D. Vance stepped down to become the vice president. So we are analyzing 99 senators as of November 30th, 2024.
+
+```{r}
+
+independent_counts <- df %>%
+  filter(!is.na(sentiment)) %>%
+  count(sentiment)
+
+independent_counts <- independent_counts %>%
+  mutate(sentiment = factor(sentiment, levels = c(-1, 1), labels = c("Risk", "Opportunity")))
+
+ggplot(independent_counts, aes(x = sentiment, y = n, fill = sentiment)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("Risk" = "red", "Opportunity" = "#078d0f")) +
+  labs(
+    title = "Distribution of Sentiments",
+    x = "Sentiment",
+    y = "Count",
+    fill = "Sentiment Type"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+Let's first look at how much risk and opportunity sentiment are in our dataset regarding climate change. Opportunity sentiment is more prevalent than risk sentiment, indicating that the senate generally has a proactive stance on addressing challenges and pursuing solutions. Now let's look at a proportional distribution of sentiment by party. 
+
+```{r}
+
+grouped_data <- df %>%
+  filter(!is.na(sentiment)) %>%
+  group_by(party, sentiment) %>%
+  summarise(Count = n(), .groups = 'drop') %>%
+  group_by(party) %>%
+  mutate(Proportion = Count / sum(Count)) 
+
+grouped_data <- grouped_data %>%
+  mutate(sentiment = factor(sentiment, levels = c(-1, 1), labels = c("Risk", "Opportunity")))
+
+# Mosaic Plot
+ggplot(grouped_data, aes(x = party, y = Proportion, fill = sentiment)) +
+  geom_bar(stat = "identity", position = "fill") +
+  scale_fill_manual(values = c("Risk" = "red", "Opportunity" = "#078d0f")) +
+  labs(
+    title = "Proportional Distribution of Sentiments by Party",
+    x = "Party",
+    y = "Proportion",
+    fill = "Sentiment Type"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 0),
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5)
+  )
+
+```
+
+Democratic and Indepdent senators overwhelmingly view climate change as a very real challenge that they want to tackle. Republicans introduce risk while talking about climate change, meaning they do not believe in it or do not support tackling it. However, there are different levels of being a Democrat and being a Republican. Our senators have been given ideology rankings. Let's analyze how sentiment changes as ideology ranks do. The ranks go from -1 to 1, with -1 being very librtal and 1 being very conservative. 
+
+```{r}
+
+library(dplyr)
+library(ggplot2)
+
+# Create ideology bins
+bins <- c(-1.0, -0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
+labels <- c(
+  "-1.0 to -0.8", "-0.8 to -0.6", "-0.6 to -0.4", "-0.4 to -0.2",
+  "-0.2 to 0.0", "0.0 to 0.2", "0.2 to 0.4", "0.4 to 0.6",
+  "0.6 to 0.8", "0.8 to 1.0"
+)
+
+# Add ideology bins and calculate proportions
+grouped_data <- df %>%
+  filter(!is.na(sentiment)) %>%
+  mutate(
+    ideology_bin = cut(ideology_score, breaks = bins, labels = labels, include.lowest = TRUE),
+    sentiment = factor(sentiment, levels = c(-1, 1), labels = c("Risk", "Opportunity"))
+  ) %>%
+  group_by(ideology_bin, sentiment) %>%
+  summarise(Count = n(), .groups = 'drop') %>%
+  group_by(ideology_bin) %>%
+  mutate(Proportion = Count / sum(Count))
+
+# Mosaic Plot for Ideology Bins
+ggplot(grouped_data, aes(x = ideology_bin, y = Proportion, fill = sentiment)) +
+  geom_bar(stat = "identity", position = "fill") +
+  scale_fill_manual(values = c("Risk" = "red", "Opportunity" = "#078d0f")) +
+  labs(
+    title = "Proportional Distribution of Sentiments by Ideology Bins",
+    x = "Ideology Bin",
+    y = "Proportion",
+    fill = "Sentiment Type"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5)
+  )
+
+```
+
+```{r}
+
+heatmap_data <- df %>%
+  mutate(
+    ideology_bin = cut(ideology_score, 
+                      breaks = seq(-1, 1, by = 0.2),
+                      labels = c("-1.0 to -0.8", 
+                               "-0.8 to -0.6", 
+                               "-0.6 to -0.4", 
+                               "-0.4 to -0.2", 
+                               "-0.2 to 0.0",
+                               "0.0 to 0.2",
+                               "0.2 to 0.4",
+                               "0.4 to 0.6",
+                               "0.6 to 0.8",
+                               "0.8 to 1.0")),
+    sentiment = ifelse(sentiment == 1, "Opportunity", "Risk")
+  ) %>%
+  group_by(ideology_bin, sentiment) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  group_by(ideology_bin) %>%
+  mutate(percentage = (count / sum(count)) * 100) %>%
+  ungroup()
+
+heatmap_data <- heatmap_data %>%
+  filter(!is.na(ideology_bin))
+
+# Heatmap
+ggplot(heatmap_data, aes(x = sentiment, y = ideology_bin, fill = percentage)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%.1f", percentage)), 
+            color = "black", size = 4) +
+  scale_fill_gradientn(
+    colors = c("darkred", "red", "yellow", "lightgreen", "darkgreen"),  
+    values = scales::rescale(c(0, 25, 50, 75, 100))  
+  ) +
+  labs(
+    title = "Heatmap of Ideology Score Ranges by Sentiment (Risk and Opportunity)",
+    x = "Sentiment",
+    y = "Ideology Score Range",
+    fill = "Percentage"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 0, hjust = 0.5),
+    axis.text.y = element_text(hjust = 1),
+    plot.title = element_text(hjust = 0.5)
+  )
+
+```
+
+-1 to 0 ideology score were all opportunity sentiment. Negative sentiment began dominating more and more as we approach positive 1. Let's do a correlation test to confirm this result.
+
+```{r}
+
+# Correlation test between ideology score and sentiment
+ideology_correlation <- cor.test(df$ideology_score, df$sentiment)
+print("\nCorrelation between Ideology Score and Sentiment:")
+print(ideology_correlation)
+
+```
+
+The correlation value is -0.8134339! However, let's also look at this scatter plot.
+
+```{r}
+
+# Scatter plot for sentiment vs. ideology by party
+ggplot(df, aes(x = ideology_score, y = sentiment, color = party)) +
+  geom_jitter(alpha = 0.6, width = 0.1, height = 0.1) +  
+  scale_color_manual(values = c("D" = "#00AEF3", "R" = "#E81B23", "I" = "#A45FE6")) +
+  labs(
+    title = "Sentiment vs. Ideology by Party",
+    x = "Ideology Score (-1 = Liberal, 1 = Conservative)",
+    y = "Sentiment (-1 = Risk, 1 = Opportunity)",
+    color = "Party"
+  ) +
+  theme_minimal()
+
+```
+
+We can see here that some Republican's do have positive sentiment regarding climate change. Democrats and Independents show a unified opportunity-oriented sentiment. Republicans exhibit a split, with a mix of opportunity and risk perceptions. 
+
+Let's do some analysis by region now, starting with some maps. 
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+df <- df %>%
+  mutate(state = tolower(state.name[match(state, state.abb)])) 
+
+state_senators <- df %>%
+  distinct(state, party) %>%                           
+  group_by(state) %>%
+  summarise(
+    party_composition = case_when(
+      all(party == "R") ~ "Republican",
+      all(party == "D") ~ "Democrat",
+      any(party == "I") & all(party %in% c("I", "D")) ~ "Split (Independent & Democrat)", 
+      any(party == "I") & all(party %in% c("I", "R")) ~ "Split (Independent & Republican)",
+      TRUE ~ "Split (Republican & Democrat)"
+    ),
+    .groups = "drop"
+  )
+
+party_colors <- c(
+  "Republican" = "red",
+  "Democrat" = "blue",
+  "Split (Independent & Democrat)" = "yellow",
+  "Split (Independent & Republican)" = "orange",
+  "Split (Republican & Democrat)" = "purple"
+)
+
+plot_usmap(data = state_senators, values = "party_composition", regions = "states") +
+  scale_fill_manual(
+    values = party_colors,
+    name = "Party Composition"
+  ) +
+  labs(
+    title = "Senator Party Composition by State",
+    subtitle = "Republican, Democrat, Independent, or Split"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    panel.background = element_rect(fill = "white"),
+    panel.grid = element_blank()
+  )
+
+```
+
+Most states elect senators from the same party, with the exception of Wisconsin, Pennsylvania, Maine, and Vermont. 
+
+```{r}
+
+df <- df %>%
+  mutate(state = tolower(state.name[match(state, state.abb)])) 
+
+state_senators <- df %>%
+  group_by(state) %>%
+  summarise(
+    avg_ideology_score = mean(ideology_score, na.rm = TRUE),  
+    .groups = "drop"
+  )
+
+plot_usmap(data = state_senators, values = "avg_ideology_score", regions = "states") +
+  scale_fill_gradient2(
+    low = "#3097ff",   # Liberal (-1)
+    mid = "white",  # Neutral (0)
+    high = "red",    # Conservative (1)
+    midpoint = 0,    # Center the gradient around 0
+    name = "Avg. Ideology Score"
+  ) +
+  labs(
+    title = "Average Ideology Score of Senators by State",
+    subtitle = "Blue = More Liberal, Red = More Conservative"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    panel.background = element_rect(fill = "white"),
+    panel.grid = element_blank()
+  )
+
+```
