@@ -107,7 +107,7 @@ wordcloud(
 
 ```
 
-Let's look at topic modeling by party.
+Let's look at frequent words by party.
 
 ```{r}
 
@@ -164,13 +164,11 @@ word_region_frequencies <- df %>%
   ) %>%
   arrange(region, desc(frequency))
 
-# Get top 10 words for each region
 top_region_words <- word_region_frequencies %>%
   group_by(region) %>%
   slice_head(n = 10) %>%
   ungroup()
 
-# Create plot
 ggplot(top_region_words, aes(x = reorder(words, frequency), 
                            y = frequency)) +
   geom_bar(stat = "identity", fill = "steelblue") +
