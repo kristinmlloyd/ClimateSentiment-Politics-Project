@@ -26,24 +26,177 @@ head(df)
 ```
 
 
-bar chart for for topic modeling by party
+Let's look at the top 20 most frequent words. 
 
-bar chart for topic modeling by party
+```{r}
 
-bar chart for topic modeling by region
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(tidytext)
 
-word cloud for topic modeling by party
-
-word cloud for topic modeling by bins
-
-word cloud for topic modeling by region
-
-
+```
 
 
 ```{r}
 
-df <- read.csv("Data/processed-data/President_sentiment3.csv")
+word_frequencies <- df %>%
+  mutate(words = strsplit(as.character(dominant_topic), ",|\\s+")) %>%
+  unnest(words) %>%
+  filter(words != "") %>%  
+  group_by(words) %>%
+  summarise(
+    frequency = n(),
+    .groups = 'drop'
+  ) %>%
+  arrange(desc(frequency)) %>%
+  head(20)  
+
+ggplot(word_frequencies, aes(x = reorder(words, frequency), y = frequency)) +
+  geom_bar(stat = "identity", fill = "#FF5733") +
+  coord_flip() + 
+  labs(
+    title = "Top 20 Most Frequent Words in Topics",
+    x = "Words",
+    y = "Frequency"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.text.y = element_text(size = 10)
+  ) +
+  geom_text(aes(label = frequency), hjust = -0.2)  
+
+cat("\nTop 20 Most Frequent Words:\n")
+print(word_frequencies, n = 20)
+
+```
+
+ These words emphasize the central focus on climate-related issues, particularly around energy transitions and addressing climate change, while words like "action," "impact," and "crisis" highlight the urgency and proactive measures associated with these discussions. Let's look at a word cloud for easier readbility. 
+
+ ```{r}
+
+install.packages("wordcloud")
+library(wordcloud)
+
+word_frequencies <- df %>%
+  mutate(words = strsplit(as.character(dominant_topic), ",|\\s+")) %>%
+  unnest(words) %>%
+  filter(words != "") %>%
+  group_by(words) %>%
+  summarise(
+    frequency = n(),
+    .groups = 'drop'
+  ) %>%
+  arrange(desc(frequency)) 
+
+set.seed(1234) 
+wordcloud(
+  words = word_frequencies$words, 
+  freq = word_frequencies$frequency, 
+  min.freq = 2,  
+  max.words = 100,  
+  random.order = FALSE,  
+  colors = brewer.pal(8, "Dark2")  
+)
+
+```
+
+Let's look at topic modeling by party.
+
+```{r}
+
+word_party_frequencies <- df %>%
+  mutate(words = strsplit(as.character(dominant_topic), ",|\\s+")) %>%
+  unnest(words) %>%
+  filter(words != "") %>%  
+  filter(words != "and") %>%  
+  group_by(party, words) %>%
+  summarise(
+    frequency = n(),
+    .groups = 'drop'
+  ) %>%
+  arrange(party, desc(frequency))
+
+top_party_words <- word_party_frequencies %>%
+  group_by(party) %>%
+  slice_head(n = 10) %>%
+  ungroup()
+
+ggplot(top_party_words, aes(x = reorder(words, frequency), 
+                           y = frequency)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  facet_wrap(~party, scales = "free_y") +
+  coord_flip() +
+  labs(
+    title = "Top 10 Most Frequent Words by Party",
+    x = "Words",
+    y = "Frequency"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.text = element_text(size = 10),
+    strip.text = element_text(size = 12, face = "bold")
+  ) +
+  geom_text(aes(label = frequency), hjust = -0.2)
+
+```
+
+Let's look at frequent words by region.
+
+```{r}
+
+word_region_frequencies <- df %>%
+  mutate(words = strsplit(as.character(dominant_topic), ",|\\s+")) %>%
+  unnest(words) %>%
+  filter(words != "") %>%  
+  filter(words != "and") %>%  
+  group_by(region, words) %>%
+  summarise(
+    frequency = n(),
+    .groups = 'drop'
+  ) %>%
+  arrange(region, desc(frequency))
+
+# Get top 10 words for each region
+top_region_words <- word_region_frequencies %>%
+  group_by(region) %>%
+  slice_head(n = 10) %>%
+  ungroup()
+
+# Create plot
+ggplot(top_region_words, aes(x = reorder(words, frequency), 
+                           y = frequency)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  facet_wrap(~region, scales = "free_y") +
+  coord_flip() +
+  labs(
+    title = "Top 10 Most Frequent Words by Region",
+    x = "Words",
+    y = "Frequency"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.text = element_text(size = 10),
+    strip.text = element_text(size = 12, face = "bold")
+  ) +
+  geom_text(aes(label = frequency), hjust = -0.2)
+
+
+```
+
+## President
+
+```{r}
+
+df_president <- read.csv("Data/processed-data/President_sentiment3.csv")
 head(df)
 
 ```

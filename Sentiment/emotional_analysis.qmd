@@ -16,7 +16,7 @@ library(tidyverse)
 
 ```
 
-Let's load my dataset and look at the emotions my model predicted for each piece of sentiment.
+Let's load my dataset and look at the emotions my model predicted for each piece of sentiment. I want to look at the emotion picked up by the model. 
 
 ```{r}
 
@@ -25,22 +25,244 @@ head(df)
 
 ```
 
+```{r}
 
+emotion_counts <- df %>%
+  count(emotion) %>%
+  arrange(desc(n))
 
+ggplot(emotion_counts, aes(x = reorder(emotion, n), y = n)) +
+  geom_bar(stat = "identity", fill = "steelblue", alpha = 0.8) +
+  coord_flip() + 
+  labs(
+    title = "Distribution of Emotions in Senator Statements",
+    x = "Emotion",
+    y = "Count",
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12)
+  ) +
+  geom_text(aes(label = n), hjust = -0.2, size = 3.5) 
 
-bar chart for emotions
+```
 
-emotion by party
-
-emotion by bins ideology
-
-emotion by region
+The model categorized a huge majority of the sentiment as neutral. The model only caught 60 emotional pieces of sentiment. Let's look at emotion by party, excluding the neutral option.
 
 ```{r}
 
-df <- read.csv("Data/processed-data/President_sentiment3.csv")
+emotion_party_counts <- df %>%
+  filter(emotion != "neutral") %>% 
+  group_by(party, emotion) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  group_by(party) %>%
+  mutate(proportion = count / sum(count)) %>%
+  ungroup()
+
+emotion_colors <- c(
+  "admiration" = "#98D7C2",   
+  "annoyance" = "#FFFFA1",   
+  "approval" = "#E6E6FA",     
+  "caring" = "#FF9E8E",    
+  "desire" = "#ADD8E6",       
+  "disappointment" = "#FFB347",
+  "disapproval" = "#90EE90",
+  "excitement" = "#FFB6C1",   
+  "fear" = "#D3D3D3",         
+  "gratitude" = "#DDA0DD",  
+  "joy" = "#98FB98",         
+  "optimism" = "green",     
+  "realization" = "pink",  
+  "sadness" = "blue"       
+)
+
+ggplot(emotion_party_counts, aes(x = party, y = count, fill = emotion)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = emotion_colors) +
+  labs(
+    title = "Distribution of Emotions by Political Party",
+    x = "Party",
+    y = "Count",
+    fill = "Emotion"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.text.x = element_text(angle = 0, hjust = 0.5),
+    legend.position = "right"
+  )
+
+ggplot(emotion_party_counts, aes(x = party, y = proportion, fill = emotion)) +
+  geom_bar(stat = "identity", position = "fill") +
+  scale_fill_manual(values = emotion_colors) +
+  labs(
+    title = "Proportional Distribution of Emotions by Political Party",
+    x = "Party",
+    y = "Proportion",
+    fill = "Emotion"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.text.x = element_text(angle = 0, hjust = 0.5),
+    legend.position = "right"
+  )
+
+```
+
+There was only one sentiment identified for indepdent senators, which is gratitude. Democrat and republican senators are mixed, with republicans displaying more fear and democrats displaying more gratitude. The plot is not reliable/trustworthy due to the model. Here are the counts for each party.
+
+```{r}
+
+emotion_counts <- df %>%
+  filter(emotion != "neutral") %>%
+  group_by(party, emotion) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  arrange(party, desc(count))
+
+emotion_summary <- emotion_counts %>%
+  group_by(party) %>%
+  mutate(
+    total_party = sum(count),
+    percentage = round(count/sum(count) * 100, 1)
+  ) %>%
+  mutate(
+    display = paste0(count, " (", percentage, "%)")
+  )
+
+for(p in unique(emotion_summary$party)) {
+  cat("\n\n", "========== ", p, " ==========\n")
+  cat("Total emotions:", sum(emotion_summary$count[emotion_summary$party == p]), "\n\n")
+  party_data <- emotion_summary %>% 
+    filter(party == p) %>%
+    arrange(desc(count))
+  for(i in 1:nrow(party_data)) {
+    cat(sprintf("%-15s %s\n", 
+                paste0(party_data$emotion[i], ":"),
+                party_data$display[i]))
+  }
+}
+
+```
+
+Let's look at emotion by region, even though we know the plot will not be very reliable. 
+
+```{r}
+
+emotion_region_counts <- df %>%
+  filter(emotion != "neutral") %>%
+  group_by(region, emotion) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  group_by(region) %>%
+  mutate(proportion = count / sum(count)) %>%
+  ungroup()
+
+emotion_colors <- c(
+  "admiration" = "#98D7C2",    
+  "annoyance" = "#FFFFA1",   
+  "approval" = "#E6E6FA",  
+  "caring" = "#FF9E8E",       
+  "desire" = "#ADD8E6",       
+  "disappointment" = "#FFB347", 
+  "disapproval" = "#90EE90", 
+  "excitement" = "#FFB6C1",  
+  "fear" = "#D3D3D3",      
+  "gratitude" = "#DDA0DD", 
+  "joy" = "#98FB98",     
+  "optimism" = "green",     
+  "realization" = "pink",  
+  "sadness" = "blue"       
+)
+
+ggplot(emotion_region_counts, aes(x = region, y = proportion, fill = emotion)) +
+  geom_bar(stat = "identity", position = "fill") +
+  scale_fill_manual(values = emotion_colors) +
+  labs(
+    title = "Proportional Distribution of Emotions by Region",
+    x = "Region",
+    y = "Proportion",
+    fill = "Emotion"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "right"
+  )
+
+```
+
+```{r}
+
+emotion_region_summary <- df %>%
+  filter(emotion != "neutral") %>%
+  group_by(region, emotion) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  group_by(region) %>%
+  mutate(
+    total_region = sum(count),
+    percentage = round(count/sum(count) * 100, 1)
+  ) %>%
+  arrange(region, desc(count))
+
+for(r in unique(emotion_region_summary$region)) {
+  cat("\n\n", "===================== ", r, " =====================\n")
+  cat("Total emotions expressed:", sum(emotion_region_summary$count[emotion_region_summary$region == r]), "\n\n")
+  region_data <- emotion_region_summary %>% 
+    filter(region == r) %>%
+    arrange(desc(count))
+  
+  for(i in 1:nrow(region_data)) {
+    cat(sprintf("%-15s %d expressions (%.1f%%)\n", 
+                paste0(region_data$emotion[i], ":"),
+                region_data$count[i],
+                region_data$percentage[i]))
+  }
+  cat("\n")
+}
+
+cat("\nTotal emotions across all regions:", 
+    sum(emotion_region_summary$count), 
+    "(excluding neutral)\n")
+
+```
+
+## President
+
+```{r}
+
+df_president <- read.csv("Data/processed-data/President_sentiment3.csv")
 head(df)
 
 ```
 
-emotion bar chart 
+Neutral dominates President Trump's sentiment according to the model. The next ones are dissaproval, annoyance, and admiration. 
+
+```{r}
+
+emotion_counts <- df_president %>%
+  count(emotion) %>%
+  arrange(desc(n))
+
+ggplot(emotion_counts, aes(x = reorder(emotion, n), y = n)) +
+  geom_bar(stat = "identity", fill = "steelblue", alpha = 0.8) +
+  coord_flip() + 
+  labs(
+    title = "Distribution of Emotions in Senator Statements",
+    x = "Emotion",
+    y = "Count",
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12)
+  ) +
+  geom_text(aes(label = n), hjust = -0.2, size = 3.5) 
+
+print("Emotion Frequencies:")
+print(emotion_counts)
+
+```
