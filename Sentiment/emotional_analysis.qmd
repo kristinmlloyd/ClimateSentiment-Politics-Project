@@ -1,0 +1,46 @@
+---
+title: "Emotional Analysis"
+author: “Kristin Lloyd”
+format: 
+  html:
+    toc: true
+    embed-resources: true
+    code-fold: true
+---
+
+```{r}
+
+options(repos = c(CRAN = "https://cran.rstudio.com"))
+install.packages("tidyverse")
+library(tidyverse)
+
+```
+
+Let's load my dataset and look at the emotions my model predicted for each piece of sentiment.
+
+```{r}
+
+df <- read.csv("Data/processed-data/Senators_sentiment3.csv")
+head(df)
+
+```
+
+
+
+
+bar chart for emotions
+
+emotion by party
+
+emotion by bins ideology
+
+emotion by region
+
+```{r}
+
+df <- read.csv("Data/processed-data/President_sentiment3.csv")
+head(df)
+
+```
+
+emotion bar chart 
