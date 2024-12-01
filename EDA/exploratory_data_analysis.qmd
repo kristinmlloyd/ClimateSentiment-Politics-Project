@@ -19,9 +19,10 @@ library(tidyverse)
 library(tidyr)
 library(reshape2)
 library(usmap)
-library(dplyr)
 library(networkD3)
 library(coin)
+library(dplyr)
+library(ggplot2)
 
 ```
 
@@ -107,12 +108,66 @@ ggplot(grouped_data, aes(x = party, y = Proportion, fill = sentiment)) +
 
 ```
 
+```{r}
+
+flows_party <- df %>%
+  filter(party %in% c("R", "D")) %>% 
+  mutate(
+    sentiment_label = ifelse(sentiment == 1, "Opportunity", "Risk") 
+  ) %>%
+  group_by(party, sentiment_label) %>%
+  summarise(value = n(), .groups = "drop") 
+
+nodes_party <- data.frame(
+  name = c(
+    unique(flows_party$party),  
+    unique(flows_party$sentiment_label)  
+  )
+)
+
+links_party <- flows_party %>%
+  mutate(
+    source = match(party, nodes_party$name) - 1, 
+    target = match(sentiment_label, nodes_party$name) - 1,  
+    value = value  
+  )
+
+sankeyNetwork(
+  Links = links_party, 
+  Nodes = nodes_party,
+  Source = "source",
+  Target = "target",
+  Value = "value", 
+  NodeID = "name",
+  sinksRight = TRUE, 
+  nodeWidth = 30,
+  fontSize = 12, 
+  height = 600,
+  width = 1000
+)
+
+```
+
 Democratic and Indepdent senators overwhelmingly view climate change as a very real challenge that they want to tackle. Republicans introduce risk while talking about climate change, meaning they do not believe in it or do not support tackling it. However, there are different levels of being a Democrat and being a Republican. Our senators have been given ideology rankings. Let's analyze how sentiment changes as ideology ranks do. The ranks go from -1 to 1, with -1 being very librtal and 1 being very conservative. 
 
 ```{r}
 
-library(dplyr)
-library(ggplot2)
+ggplot(df, aes(x = party, y = ideology_score, fill = party)) +
+  geom_violin(alpha = 0.7) +
+  geom_boxplot(width = 0.2, alpha = 0.7) +
+  scale_fill_manual(values = c("D" = "#00AEF3", 
+                              "R" = "#E81B23", 
+                              "I" = "#A45FE6")) +
+  labs(title = "Distribution of Ideology Scores by Party",
+       x = "Party",
+       y = "Ideology Score (-1 = Liberal, 1 = Conservative)") +
+  theme_minimal()
+
+```
+
+Interpretation:
+
+```{r}
 
 # Create ideology bins
 bins <- c(-1.0, -0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
@@ -237,17 +292,6 @@ We can see here that some Republican's do have positive sentiment regarding clim
 
 Let's do some analysis by region now, starting with some maps. 
 
-
-
-
-
-
-
-
-
-
-
-
 ```{r}
 
 df <- df %>%
@@ -329,5 +373,308 @@ plot_usmap(data = state_senators, values = "avg_ideology_score", regions = "stat
     panel.background = element_rect(fill = "white"),
     panel.grid = element_blank()
   )
+
+```
+
+The map shows the average ideology score of senators by state, with blue indicating liberal states, red indicating conservative states, and white representing neutral ideology. A majority of states seem to be moderate deocrat or moderate republican. There are only a few states with brighter blue/red values. 
+
+```{r}
+
+state_sentiment <- df %>%
+  filter(!is.na(sentiment)) %>%               
+  group_by(state, sentiment) %>%
+  summarise(count = n(), .groups = "drop") %>% 
+  group_by(state) %>%
+  mutate(
+    total = sum(count),                        
+    proportion = count / total              
+  ) %>%
+  summarise(
+    max_proportion = max(proportion),       
+    sentiment_label = case_when(
+      max_proportion < 0.6 ~ "mixed",         
+      sentiment[which.max(proportion)] == -1 ~ "risk", 
+      sentiment[which.max(proportion)] == 1 ~ "opportunity"
+    ),
+    .groups = "drop"
+  )
+
+# Plot the US map with mixed sentiment
+plot_usmap(data = state_sentiment, values = "sentiment_label", regions = "states") +
+  scale_fill_manual(
+    values = c(
+      "opportunity" = "green", 
+      "risk" = "red", 
+      "mixed" = "purple"          
+    ),
+    name = "Sentiment",
+    breaks = c("opportunity", "risk", "mixed"),
+    labels = c("Opportunity", "Risk", "Mixed") 
+  ) +
+  labs(
+    title = "Sentiment Distribution by State", 
+    subtitle = "Opportunity, Risk, or Mixed Sentiment"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 12)
+  )
+
+```
+
+Wisconsin had mixed senators and had an average ideology score of around 0 since it was shaded white in the previous plot. On this plot, we see that it has mixed sentiment which makes sense. Alaska has mixed sentiment because despite both senators being republican, 
+Iowa has mixed sentiment because 
+North Carolina has mixed sentiment because
+
+Let's run a chi square test to determine if there is a significant relationship between ideology score and sentiment. 
+
+Null Hypothesis: There is no association between a senator's party affiliation (Democrat, Independent, Republican) and their sentiment (Risk, Opportunity).
+
+Alternate Hypothesis: There is a significant association between a senator's party affiliation (Democrat, Independent, Republican) and their sentiment (Risk, Opportunity).
+
+```{r}
+
+install.packages("coin")  
+library(coin) 
+
+party_sentiment_table <- table(df$party, df$sentiment)
+
+perm_test_party <- chisq_test(party_sentiment_table, distribution = approximate(B = 10000))
+
+print("Permutation test for Party and Sentiment:")
+print(perm_test_party)
+
+```
+
+chi-squared: 190.38
+p-val: 0.0004
+Since the p-value is < 0.05, we reject the null hypothesis and conclude that party affiliation is significantly associated with sentiment.
+
+Let's separate into regions now. 
+
+```{r}
+
+# Region and Party
+party_region_counts <- df %>%
+  group_by(region, party) %>%
+  summarise(Count = n(), .groups = "drop")
+
+ggplot(party_region_counts, aes(x = region, y = Count, fill = party)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("D" = "blue", "R" = "red", "I" = "purple")) +
+  labs(
+    title = "Party Composition by Region",
+    x = "Region",
+    y = "Count",
+    fill = "Party"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+```
+
+Northeast and West regions are more Democratic than Republican and Midwest and South regions are more Republican than Democratic.
+
+```{r}
+
+# Region and Sentiment
+sentiment_region_props <- df %>%
+  group_by(region, sentiment) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  group_by(region) %>%
+  mutate(Proportion = Count / sum(Count))
+
+ggplot(sentiment_region_props, aes(x = region, y = Proportion, fill = as.factor(sentiment))) +
+  geom_bar(stat = "identity", position = "fill") +
+  scale_fill_manual(values = c("-1" = "red", "1" = "#078d0f"), labels = c("Risk", "Opportunity")) +
+  labs(
+    title = "Sentiment Distribution by Region",
+    x = "Region",
+    y = "Proportion",
+    fill = "Sentiment"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+```
+
+Northeast and West regions are more opportunity than risk and Midwest and South regions are more risk than opportunity.
+
+```{r}
+
+# Boxplot for ideology score by region
+ggplot(df, aes(x = region, y = ideology_score, fill = region)) +
+  geom_boxplot(alpha = 0.7) +
+  scale_fill_brewer(palette = "Set3") +
+  labs(
+    title = "Ideology Score Distribution by Region",
+    x = "Region",
+    y = "Ideology Score (-1 = Liberal, 1 = Conservative)"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"
+  )
+
+```
+
+The Northeast is predominantly liberal with minimal variation, while the West and Midwest exhibit the greatest ideological diversity, spanning from strongly liberal to strongly conservative. The South leans slightly conservative but is less polarized compared to other regions.
+
+```{r}
+
+heatmap_data <- df %>%
+  mutate(
+    sentiment = ifelse(sentiment == 1, "Opportunity", "Risk")  
+  ) %>%
+  group_by(region, sentiment) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  group_by(region) %>%
+  mutate(percentage = (count / sum(count)) * 100) %>%
+  ungroup()
+
+# Heatmap
+ggplot(heatmap_data, aes(x = sentiment, y = region, fill = percentage)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%.1f%%", percentage)), 
+            color = "black", size = 4) +
+  scale_fill_gradientn(
+    colors = c("darkred", "red", "yellow", "lightgreen", "darkgreen"),  
+    values = scales::rescale(c(0, 25, 50, 75, 100)), 
+    name = "Percentage"
+  ) +
+  labs(
+    title = "Heatmap of Sentiment Distribution by Region",
+    x = "Sentiment",
+    y = "Region"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 0, hjust = 0.5),
+    axis.text.y = element_text(hjust = 1),
+    plot.title = element_text(hjust = 0.5)
+  )
+
+```
+
+The Northeast is the most optimistic region, strongly favoring opportunity. The Midwest is the most divided, highlighting significant differences in sentiment within the region. The West and South share similar sentiment distributions, leaning optimistic but still spreading risk regarding climate change.
+
+```{r}
+
+flows_region <- df %>%
+  mutate(
+    sentiment_label = ifelse(sentiment == 1, "Opportunity", "Risk")  
+  ) %>%
+  group_by(region, sentiment_label) %>%
+  summarise(value = n(), .groups = "drop") 
+
+nodes_region <- data.frame(
+  name = c(
+    unique(flows_region$region),     
+    unique(flows_region$sentiment_label)  
+  )
+)
+
+links_region <- flows_region %>%
+  mutate(
+    source = match(region, nodes_region$name) - 1,       
+    target = match(sentiment_label, nodes_region$name) - 1,  
+    value = value                                   
+  )
+
+sankeyNetwork(
+  Links = links_region, 
+  Nodes = nodes_region,
+  Source = "source",
+  Target = "target",
+  Value = "value", 
+  NodeID = "name",
+  sinksRight = TRUE, 
+  nodeWidth = 30,
+  fontSize = 12, 
+  height = 600,
+  width = 1000
+)
+
+```
+
+Let's run a correlation test.
+
+```{r}
+
+# Correlation test between ideology score and sentiment
+ideology_correlation <- cor.test(df$ideology_score, df$sentiment)
+print("\nCorrelation between Ideology Score and Sentiment:")
+print(ideology_correlation)
+
+```
+
+The value was -0.8134339
+
+Let's run a chi square test to determine if there is a significant relationship between region and sentiment. 
+
+Null hypothesis: There is no association between a senator's region (e.g., Midwest, South, West, Northeast) and their sentiment (Risk, Opportunity).
+
+Alternate hypothesis: There is a significant association between a senator's region and their sentiment.
+
+```{r}
+
+region_sentiment_table <- table(df$region, df$sentiment)
+
+perm_test_region <- chisq_test(region_sentiment_table, distribution = approximate(B = 10000))
+
+print("Permutation test for Region and Sentiment:")
+print(perm_test_region)
+
+```
+
+chi square: 69.002
+p-val: 0.0004
+We reject the null hypothesis and conclude that region is significantly associated with sentiment. 
+
+
+
+```{r}
+
+flows_region <- df %>%
+  mutate(
+    sentiment_label = ifelse(sentiment == 1, "Opportunity", "Risk")  
+  ) %>%
+  group_by(region, sentiment_label) %>%
+  summarise(value = n(), .groups = "drop") 
+
+nodes_region <- data.frame(
+  name = c(
+    unique(flows_region$region),     
+    unique(flows_region$sentiment_label)  
+  )
+)
+
+links_region <- flows_region %>%
+  mutate(
+    source = match(region, nodes_region$name) - 1,       
+    target = match(sentiment_label, nodes_region$name) - 1,  
+    value = value                                   
+  )
+
+sankeyNetwork(
+  Links = links_region, 
+  Nodes = nodes_region,
+  Source = "source",
+  Target = "target",
+  Value = "value", 
+  NodeID = "name",
+  sinksRight = TRUE, 
+  nodeWidth = 30,
+  fontSize = 12, 
+  height = 600,
+  width = 1000
+)
 
 ```
