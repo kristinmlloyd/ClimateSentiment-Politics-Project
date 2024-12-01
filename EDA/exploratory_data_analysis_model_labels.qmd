@@ -35,7 +35,7 @@ head(df)
 
 ```
 
-Each state except for Ohio has two senators. Ohio currently has one senator because J.D. Vance stepped down to become the vice president. So we are analyzing 99 senators as of November 30th, 2024.
+This dataset has a model_label column from my sentiment model. Let's see how the model's predictions effect my visualizations. 
 
 ```{r}
 
@@ -60,7 +60,7 @@ ggplot(independent_counts, aes(x = model_label, y = n, fill = model_label)) +
 
 ```
 
-Let's first look at how much risk and opportunity sentiment are in our dataset regarding climate change. Opportunity sentiment is more prevalent than risk sentiment, indicating that the senate generally has a proactive stance on addressing challenges and pursuing solutions. Now let's look at a proportional distribution of sentiment by party. 
+Let's first look at how much risk and opportunity sentiment are in our dataset regarding climate change. Opportunity sentiment is more prevalent than risk sentiment, indicating that the senate generally has a proactive stance on addressing challenges and pursuing solutions. This matches my idependent label visualization. Now let's look at a proportional distribution of sentiment by party. 
 
 ```{r}
 
@@ -133,7 +133,7 @@ sankeyNetwork(
 
 ```
 
-Based on these two plots, democratic and indepdent senators overwhelmingly view climate change as a very real challenge that they want to tackle. Republicans generally introduce risk while talking about climate change, meaning they do not believe in it or do not support tackling it. However, there are different levels of being a Democrat and being a Republican. Our senators have been given ideology rankings. Let's analyze how sentiment changes as ideology ranks do. The ranks go from -1 to 1, with -1 being very liberal and 1 being very conservative. 
+Based on these two plots, democratic and indepdent senators overwhelmingly view climate change as a very real challenge that they want to tackle. Republicans generally introduce risk while talking about climate change, meaning they do not believe in it or do not support tackling it. This visualization is slightly different. In the other visualizations, democrats and independents sentiment was uniformly opportunistic. Here, some risky sentiment has been introduced. Overall, the visualizations still get a clear message across. Our senators have been given ideology rankings. Let's analyze how sentiment changes as ideology ranks do. The ranks go from -1 to 1, with -1 being very liberal and 1 being very conservative. 
 
 ```{r}
 
@@ -150,7 +150,7 @@ ggplot(df, aes(x = party, y = ideology_score, fill = party)) +
 
 ```
 
-Democrat senators exhibit a more concentrated liberal ideology and Republicans displaying a wider range of ideology scores.
+Democrat senators exhibit a more concentrated liberal ideology and Republicans displaying a wider range of ideology scores. This plot stayed the same since it did not involve sentiment.
 
 ```{r}
 
@@ -256,7 +256,9 @@ ggplot(heatmap_data, aes(x = model_label, y = ideology_bin, fill = percentage)) 
 
 ```
 
-Senators with more liberal ideology scores overwhelmingly demonstrate an opportunity based sentiment. In contrast, as the ideology scores become more conservative, the risk sentiment starts to dominate, suggesting a more cautious or skeptical perspective. To confirm this relationship between ideology and sentiment, a correlation analysis would be beneficial. 
+Senators with more liberal ideology scores overwhelmingly demonstrate an opportunity based sentiment. In contrast, as the ideology scores become more conservative, the risk sentiment starts to dominate, suggesting a more cautious or skeptical perspective. These plots still show the relationship correctly, however in this plot the ideology bin 0.4 to 0.8 has more mixed sentiment when in my indepdent label plot, this category was skewed risk sentiment.
+
+To test this relationship between ideology and sentiment, a correlation analysis would be beneficial. 
 
 ```{r}
 
@@ -267,7 +269,7 @@ print(ideology_correlation)
 
 ```
 
-The results of the correlation analysis provide strong evidence to support the observed relationship between ideology and sentiment. The correlation coefficient is -0.813, indicating a negative correlation between these two variables. 
+The result of the correlation test is -0.560935. This is much less strong than the -0.8 value I got in my independent label analysis. This means that the model did not produce as telling of a model. 
 
 Let's do some analysis by region now, starting with some maps. 
 
@@ -328,7 +330,7 @@ plot_usmap(data = state_senators, values = "party_composition", regions = "state
 
 ```
 
-Most states elect senators from the same party, with the exception of Wisconsin, Pennsylvania, Maine, and Vermont. 
+Most states elect senators from the same party, with the exception of Wisconsin, Pennsylvania, Maine, and Vermont. This map did not change as sentimet was not introduced.
 
 ```{r}
 
@@ -367,7 +369,7 @@ plot_usmap(data = state_senators, values = "avg_ideology_score", regions = "stat
 
 ```
 
-The map shows that most states have senators with more moderate ideological leanings, reflecting a balance of Democratic and Republican views. However, a few states have senators with more extreme liberal or conservative positions. This ideological polarization in those states could make it harder for their senators to find common ground and work together on climate change.  
+The map shows that most states have senators with more moderate ideological leanings, reflecting a balance of Democratic and Republican views. However, a few states have senators with more extreme liberal or conservative positions. This ideological polarization in those states could make it harder for their senators to find common ground and work together on climate change. This map did not change as sentiment was not introduced. 
 
 ```{r}
 
@@ -417,7 +419,7 @@ plot_usmap(data = state_sentiment, values = "sentiment_label", regions = "states
 
 ```
 
-You can see that it now classifies states wrong. This map is completely different from my first map.
+Texas, Wisconsin, West Virginia, Kentucky, and Tennessee now have mixed sentiment. Wisconsin is the only state that previously had mixed sentiment out of these states. Based on independent labels, Pennsylvania, Alaska, and South Dakota should have mixed sentiment. The model's labels also classified Utah as having positive sentiment when the indepdent labels claim that it should be negative sentiment. 
 
 ```{r}
 
@@ -442,7 +444,7 @@ ggplot(party_region_counts, aes(x = region, y = Count, fill = party)) +
 
 ```
 
-Northeast and West regions are more Democratic than Republican and Midwest and South regions are more Republican than Democratic.
+Northeast and West regions are more Democratic than Republican and Midwest and South regions are more Republican than Democratic. This chart did not change because sentiment was not a variable.
 
 ```{r}
 
@@ -469,7 +471,7 @@ ggplot(sentiment_region_props, aes(x = region, y = Proportion, fill = as.factor(
 
 ```
 
-Northeast and West regions are more opportunity than risk and Midwest and South regions are more risk than opportunity.
+Northeast and West regions are more opportunity than risk and Midwest and South regions are more risk than opportunity. While it is not the same, the chart shows the same pattern that it previously showed. 
 
 ```{r}
 
@@ -490,7 +492,7 @@ ggplot(df, aes(x = region, y = ideology_score, fill = region)) +
 
 ```
 
-The Northeast is predominantly liberal with minimal variation, while the West and Midwest exhibit the greatest ideological diversity, spanning from strongly liberal to strongly conservative. The South leans slightly conservative but is less polarized compared to other regions.
+The Northeast is predominantly liberal with minimal variation, while the West and Midwest exhibit the greatest ideological diversity, spanning from strongly liberal to strongly conservative. The South leans slightly conservative but is less polarized compared to other regions. This chart did not change because sentiment is not a variable.
 
 ```{r}
 
@@ -528,8 +530,6 @@ ggplot(heatmap_data, aes(x = model_label, y = region, fill = percentage)) +
 
 ```
 
-The Northeast is the most optimistic region, strongly favoring opportunity. The Midwest is the most divided, highlighting significant differences in sentiment within the region. The West and South share similar sentiment distributions, leaning optimistic but still spreading risk regarding climate change.
-
 ```{r}
 
 flows_region <- df %>%
@@ -569,44 +569,7 @@ sankeyNetwork(
 
 ```
 
-```{r}
-
-flows_region <- df %>%
-  mutate(
-    sentiment_label = ifelse(model_label == 1, "Opportunity", "Risk")  
-  ) %>%
-  group_by(region, sentiment_label) %>%
-  summarise(value = n(), .groups = "drop") 
-
-nodes_region <- data.frame(
-  name = c(
-    unique(flows_region$region),     
-    unique(flows_region$sentiment_label)  
-  )
-)
-
-links_region <- flows_region %>%
-  mutate(
-    source = match(region, nodes_region$name) - 1,       
-    target = match(sentiment_label, nodes_region$name) - 1,  
-    value = value                                   
-  )
-
-sankeyNetwork(
-  Links = links_region, 
-  Nodes = nodes_region,
-  Source = "source",
-  Target = "target",
-  Value = "value", 
-  NodeID = "name",
-  sinksRight = TRUE, 
-  nodeWidth = 30,
-  fontSize = 12, 
-  height = 600,
-  width = 1000
-)
-
-```
+These charts show that the Midwest and South have very mixed sentiment, which was not shown when looking at indepdent labels. The plot is accurate at showing that the Northeast and West have more opportunistic sentiment. 
 
 To confirm this relationship between region and sentiment, we will run a correlation analysis.
 
@@ -619,7 +582,7 @@ print(ideology_correlation)
 
 ```
 
-The correlation coefficient of -0.813 indicates a strong negative correlation between these two variables. This means that as a senator's ideology score increases, their sentiment tends to shift towards perceiving climate change in a risky way rather than an opportunistic way.
+The correlation coefficient of -0.560935 indicates a moderate negative correlation between these two variables. This means that as a senator's ideology score increases, their sentiment tends to shift towards perceiving climate change in a risky way rather than an opportunistic way.
 
 ## Conclusion
 
