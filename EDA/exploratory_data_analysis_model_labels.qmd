@@ -26,32 +26,12 @@ library(ggplot2)
 
 ```
 
-Let's load my raw dataset and look at my indepdent labels. 
+Let's load my processed dataset and look at my model labels. 
 
 ```{r}
 
-df <- read.csv("../Data/raw-data/Senators.csv")
+df <- read.csv("Data/processed-data/Senators_sentiment.csv")
 head(df)
-
-```
-
-I want to make sure all senators are accounted for, let's look at senator by state.
-
-```{r}
-
-senator_summary <- df %>%
-  mutate(full_name = paste(first, last)) %>%  
-  distinct(state, full_name, party) %>%  
-  arrange(state, full_name) %>%             
-  group_by(state) %>%
-  summarise(
-    Senators = paste(paste(full_name, paste0("(", party, ")"), sep = " "), 
-                     collapse = ", "),       
-    Count = n()               
-  ) %>%
-  ungroup()
-  
-print(senator_summary, n = Inf)
 
 ```
 
@@ -60,13 +40,13 @@ Each state except for Ohio has two senators. Ohio currently has one senator beca
 ```{r}
 
 independent_counts <- df %>%
-  filter(!is.na(sentiment)) %>%
-  count(sentiment)
+  filter(!is.na(model_label)) %>%
+  count(model_label)
 
 independent_counts <- independent_counts %>%
-  mutate(sentiment = factor(sentiment, levels = c(-1, 1), labels = c("Risk", "Opportunity")))
+  mutate(model_label = factor(model_label, levels = c(-1, 1), labels = c("Risk", "Opportunity")))
 
-ggplot(independent_counts, aes(x = sentiment, y = n, fill = sentiment)) +
+ggplot(independent_counts, aes(x = model_label, y = n, fill = model_label)) +
   geom_bar(stat = "identity") +
   scale_fill_manual(values = c("Risk" = "red", "Opportunity" = "#078d0f")) +
   labs(
@@ -85,17 +65,17 @@ Let's first look at how much risk and opportunity sentiment are in our dataset r
 ```{r}
 
 grouped_data <- df %>%
-  filter(!is.na(sentiment)) %>%
-  group_by(party, sentiment) %>%
+  filter(!is.na(model_label)) %>%
+  group_by(party, model_label) %>%
   summarise(Count = n(), .groups = 'drop') %>%
   group_by(party) %>%
   mutate(Proportion = Count / sum(Count)) 
 
 grouped_data <- grouped_data %>%
-  mutate(sentiment = factor(sentiment, levels = c(-1, 1), labels = c("Risk", "Opportunity")))
+  mutate(model_label = factor(model_label, levels = c(-1, 1), labels = c("Risk", "Opportunity")))
 
 # Mosaic Plot
-ggplot(grouped_data, aes(x = party, y = Proportion, fill = sentiment)) +
+ggplot(grouped_data, aes(x = party, y = Proportion, fill = model_label)) +
   geom_bar(stat = "identity", position = "fill") +
   scale_fill_manual(values = c("Risk" = "red", "Opportunity" = "#078d0f")) +
   labs(
@@ -118,7 +98,7 @@ ggplot(grouped_data, aes(x = party, y = Proportion, fill = sentiment)) +
 flows_party <- df %>%
   filter(party %in% c("R", "I","D")) %>% 
   mutate(
-    sentiment_label = ifelse(sentiment == 1, "Opportunity", "Risk") 
+    sentiment_label = ifelse(model_label == 1, "Opportunity", "Risk") 
   ) %>%
   group_by(party, sentiment_label) %>%
   summarise(value = n(), .groups = "drop") 
@@ -196,18 +176,18 @@ labels <- c(
 
 # Add ideology bins and calculate proportions
 grouped_data <- df %>%
-  filter(!is.na(sentiment)) %>%
+  filter(!is.na(model_label)) %>%
   mutate(
     ideology_bin = cut(ideology_score, breaks = bins, labels = labels, include.lowest = TRUE),
-    sentiment = factor(sentiment, levels = c(-1, 1), labels = c("Risk", "Opportunity"))
+    model_label = factor(model_label, levels = c(-1, 1), labels = c("Risk", "Opportunity"))
   ) %>%
-  group_by(ideology_bin, sentiment) %>%
+  group_by(ideology_bin, model_label) %>%
   summarise(Count = n(), .groups = 'drop') %>%
   group_by(ideology_bin) %>%
   mutate(Proportion = Count / sum(Count))
 
 # Mosaic Plot for Ideology Bins
-ggplot(grouped_data, aes(x = ideology_bin, y = Proportion, fill = sentiment)) +
+ggplot(grouped_data, aes(x = ideology_bin, y = Proportion, fill = model_label)) +
   geom_bar(stat = "identity", position = "fill") +
   scale_fill_manual(values = c("Risk" = "red", "Opportunity" = "#078d0f")) +
   labs(
@@ -241,9 +221,9 @@ heatmap_data <- df %>%
                                "0.4 to 0.6",
                                "0.6 to 0.8",
                                "0.8 to 1.0")),
-    sentiment = ifelse(sentiment == 1, "Opportunity", "Risk")
+    model_label = ifelse(model_label == 1, "Opportunity", "Risk")
   ) %>%
-  group_by(ideology_bin, sentiment) %>%
+  group_by(ideology_bin, model_label) %>%
   summarise(count = n(), .groups = "drop") %>%
   group_by(ideology_bin) %>%
   mutate(percentage = (count / sum(count)) * 100) %>%
@@ -253,7 +233,7 @@ heatmap_data <- heatmap_data %>%
   filter(!is.na(ideology_bin))
 
 # Heatmap
-ggplot(heatmap_data, aes(x = sentiment, y = ideology_bin, fill = percentage)) +
+ggplot(heatmap_data, aes(x = model_label, y = ideology_bin, fill = percentage)) +
   geom_tile() +
   geom_text(aes(label = sprintf("%.1f", percentage)), 
             color = "black", size = 4) +
@@ -281,7 +261,7 @@ Senators with more liberal ideology scores overwhelmingly demonstrate an opportu
 ```{r}
 
 # Correlation test between ideology score and sentiment
-ideology_correlation <- cor.test(df$ideology_score, df$sentiment)
+ideology_correlation <- cor.test(df$ideology_score, df$model_label)
 print("\nCorrelation between Ideology Score and Sentiment:")
 print(ideology_correlation)
 
@@ -394,8 +374,8 @@ The map shows that most states have senators with more moderate ideological lean
 df <- read.csv("../Data/processed-data/Senators_sentiment.csv")
 
 state_sentiment <- df %>%
-  filter(!is.na(sentiment)) %>%               
-  group_by(state, sentiment) %>%
+  filter(!is.na(model_label)) %>%               
+  group_by(state, model_label) %>%
   summarise(count = n(), .groups = "drop") %>% 
   group_by(state) %>%
   mutate(
@@ -406,8 +386,8 @@ state_sentiment <- df %>%
     max_proportion = max(proportion),       
     sentiment_label = case_when(
       max_proportion < 0.6 ~ "mixed",         
-      sentiment[which.max(proportion)] == -1 ~ "risk", 
-      sentiment[which.max(proportion)] == 1 ~ "opportunity"
+      model_label[which.max(proportion)] == -1 ~ "risk", 
+      model_label[which.max(proportion)] == 1 ~ "opportunity"
     ),
     .groups = "drop"
   )
@@ -437,10 +417,7 @@ plot_usmap(data = state_sentiment, values = "sentiment_label", regions = "states
 
 ```
 
-Wisconsin had mixed senators, one republican and one democrat, and and had an average ideology score of around 0 since it was shaded white in the previous plot. On this plot, we see that it has mixed sentiment which makes sense. 
-Alaska has mixed sentiment because despite both senators being republican, Lisa Murkowski is a strong supporter of combating climate change in Alaska. She says that she has seen the devastating effects climate change has had on the state. 
-Meanwhile, Dan Sullivan often talks about the United States prioritizing climate change over other issues, claiming that climate change is not as important. This is risky sentiment because he is not acknowledging how serious climate change is.
-South Dakota and North Carolina also have mixed sentiment.
+You can see that it now classifies states wrong. This map is completely different from my first map.
 
 ```{r}
 
@@ -471,12 +448,12 @@ Northeast and West regions are more Democratic than Republican and Midwest and S
 
 # Region and Sentiment
 sentiment_region_props <- df %>%
-  group_by(region, sentiment) %>%
+  group_by(region, model_label) %>%
   summarise(Count = n(), .groups = "drop") %>%
   group_by(region) %>%
   mutate(Proportion = Count / sum(Count))
 
-ggplot(sentiment_region_props, aes(x = region, y = Proportion, fill = as.factor(sentiment))) +
+ggplot(sentiment_region_props, aes(x = region, y = Proportion, fill = as.factor(model_label))) +
   geom_bar(stat = "identity", position = "fill") +
   scale_fill_manual(values = c("-1" = "red", "1" = "#078d0f"), labels = c("Risk", "Opportunity")) +
   labs(
@@ -519,16 +496,16 @@ The Northeast is predominantly liberal with minimal variation, while the West an
 
 heatmap_data <- df %>%
   mutate(
-    sentiment = ifelse(sentiment == 1, "Opportunity", "Risk")  
+    model_label = ifelse(model_label == 1, "Opportunity", "Risk")  
   ) %>%
-  group_by(region, sentiment) %>%
+  group_by(region, model_label) %>%
   summarise(count = n(), .groups = "drop") %>%
   group_by(region) %>%
   mutate(percentage = (count / sum(count)) * 100) %>%
   ungroup()
 
 # Heatmap
-ggplot(heatmap_data, aes(x = sentiment, y = region, fill = percentage)) +
+ggplot(heatmap_data, aes(x = model_label, y = region, fill = percentage)) +
   geom_tile() +
   geom_text(aes(label = sprintf("%.1f%%", percentage)), 
             color = "black", size = 4) +
@@ -557,7 +534,7 @@ The Northeast is the most optimistic region, strongly favoring opportunity. The 
 
 flows_region <- df %>%
   mutate(
-    sentiment_label = ifelse(sentiment == 1, "Opportunity", "Risk")  
+    sentiment_label = ifelse(model_label == 1, "Opportunity", "Risk")  
   ) %>%
   group_by(region, sentiment_label) %>%
   summarise(value = n(), .groups = "drop") 
@@ -596,7 +573,7 @@ sankeyNetwork(
 
 flows_region <- df %>%
   mutate(
-    sentiment_label = ifelse(sentiment == 1, "Opportunity", "Risk")  
+    sentiment_label = ifelse(model_label == 1, "Opportunity", "Risk")  
   ) %>%
   group_by(region, sentiment_label) %>%
   summarise(value = n(), .groups = "drop") 
@@ -636,7 +613,7 @@ To confirm this relationship between region and sentiment, we will run a correla
 ```{r}
 
 # Correlation test between ideology score and sentiment
-ideology_correlation <- cor.test(df$ideology_score, df$sentiment)
+ideology_correlation <- cor.test(df$ideology_score, df$model_label)
 print("\nCorrelation between Ideology Score and Sentiment:")
 print(ideology_correlation)
 
