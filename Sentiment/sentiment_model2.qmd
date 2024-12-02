@@ -29,17 +29,18 @@ from collections import Counter
 
 ```
 
+The training data is made up of fake, risky, and opportunistic climate change tweets created by ChatGPT. The test data includes real tweets from 99 U.S. senators and President Donald Trump.
+
 ```{python}
 
 train_df = pd.read_csv("../Data/raw-data/train.csv")
-test_df = pd.read_csv("../Data/raw-data/Senators.csv")
+test_df = pd.read_csv("../Data/raw-data/test.csv")
 
 ```
 
 ```{python}
 
 def preprocess(text):
-    """This function takes in pandas dataframe, removes URL hyperlinks, stopwords, punctuation noises, and lemmatize the text."""
     tokenizer = TreebankWordTokenizer() 
     lemmatizer = WordNetLemmatizer()
     stopwords_list = stopwords.words('english')
@@ -64,6 +65,7 @@ def preprocess(text):
 ```{python}
 
 # Preprocess both datasets
+
 train_df['message'] = train_df['message'].apply(preprocess)
 test_df['message'] = test_df['message'].apply(preprocess)
 
@@ -72,6 +74,7 @@ test_df['message'] = test_df['message'].apply(preprocess)
 ```{python}
 
 # Vectorize the text
+
 vector = TfidfVectorizer(ngram_range=(1,20), min_df=2)
 train_features = vector.fit_transform(train_df['message'])
 test_features = vector.transform(test_df['message'])
@@ -81,6 +84,7 @@ test_features = vector.transform(test_df['message'])
 ```{python}
 
 # Split training data for validation
+
 X_train, X_val, y_train, y_val = train_test_split(
     train_features, 
     train_df['sentiment'],
@@ -94,6 +98,7 @@ X_train, X_val, y_train, y_val = train_test_split(
 ```{python}
 
 # Apply SMOTE
+
 print("Applying SMOTE...")
 sm = SMOTE(random_state=42)
 X_train_sm, y_train_sm = sm.fit_resample(X_train, y_train)
@@ -140,21 +145,18 @@ for name, clf in zip(names, classifiers):
 
 ```{python}
 
-# Create and display results
 results_df = pd.DataFrame(results, columns=['Classifier', 'Validation Accuracy', 'Validation F1'])
 results_df.set_index('Classifier', inplace=True)
 
 print("\nModel Performance on Validation Set:")
 print(results_df.sort_values('Validation F1', ascending=False))
 
-# Save predictions
-output_file = "Senators_predictions.csv"
+output_file = "predictions.csv"
 test_df.to_csv(output_file, index=False)
 print(f"\nPredictions saved to {output_file}")
 
-# Evaluate on test set if labels are available
 if 'sentiment' in test_df.columns:
-    print("\nModel Performance on Senators Dataset:")
+    print("\nModel Performance on Dataset:")
     for name in names:
         predictions = test_df[f'{name}_predictions']
         accuracy = accuracy_score(test_df['sentiment'], predictions)
@@ -167,30 +169,22 @@ if 'sentiment' in test_df.columns:
 
 ```{python}
 
-# Read the predictions file
-df = pd.read_csv("Senators_predictions.csv")
+df = pd.read_csv("predictions.csv")
 
-# Create new column based on majority vote of the three best models
 selected_columns = ['LogisticRegression_predictions', 'NaiveBayes_predictions', 'LinearSVM_predictions']
 df['model_label'] = df[selected_columns].mode(axis=1).iloc[:,0]
 
-# Drop the individual model prediction columns
 for col in df.columns:
     if '_predictions' in col:
         df = df.drop(col, axis=1)
 
-# Save to new file
-df.to_csv("../Data/processed-data/Senators_sentiment.csv", index=False)
-
-# Print value counts of the final labels
-print("\nDistribution of final model labels:")
-print(df['model_label'].value_counts())
+df.to_csv("../Data/processed-data/predictions.csv", index=False)
 
 ```
 
 ```{python}
 
-df = pd.read_csv("../Data/processed-data/Senators_sentiment.csv")
+df = pd.read_csv("../Data/processed-data/predictions.csv")
 
 matches = (df['model_label'] == df['sentiment']).sum()
 total = len(df)
@@ -202,5 +196,26 @@ print(f"Accuracy: {accuracy:.2f}%")
 
 print("\nConfusion Matrix:")
 print(pd.crosstab(df['sentiment'], df['model_label'], margins=True))
+
+```
+
+Save as two separate datasets, one for the president and one for the senators.
+
+```{r}
+
+# Load the processed predictions
+df = pd.read_csv("../Data/processed-data/predictions.csv")
+
+# Split the dataset into President and Senators based on the 'state' column
+president_df = df[df['state'] == 'US']
+senators_df = df[df['state'] != 'US']
+
+# Save the filtered datasets to separate CSV files
+president_df.to_csv("../Data/processed-data/President_predictions.csv", index=False)
+senators_df.to_csv("../Data/processed-data/Senators_predictions.csv", index=False)
+
+print("President predictions saved to President_predictions.csv")
+print("Senators predictions saved to Senators_predictions.csv")
+
 
 ```

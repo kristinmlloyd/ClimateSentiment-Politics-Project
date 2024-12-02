@@ -231,14 +231,14 @@ cat("\nTotal emotions across all regions:",
 
 ## President
 
+Let's load the data and look at the presidents emotions when talking about climate change. 
+
 ```{r}
 
 df_president <- read.csv("Data/processed-data/President_sentiment3.csv")
 head(df)
 
 ```
-
-Neutral dominates President Trump's sentiment according to the model. The next ones are dissaproval, annoyance, and admiration. 
 
 ```{r}
 
@@ -266,3 +266,5 @@ print("Emotion Frequencies:")
 print(emotion_counts)
 
 ```
+
+Neutral dominates President Trump's sentiment according to the model. The next ones are dissaproval, annoyance, and admiration. 
