@@ -26,7 +26,7 @@ library(ggplot2)
 
 ```
 
-Let's load my processed dataset and look at my model labels. 
+Let's load my processed dataset and look at my model labels. My main interpretations are in exploratory_data_analysis.html. The main point of this document is to show the differences between the model labeled visualizations and the indepdently labeled visualizations.
 
 ```{r}
 
@@ -60,7 +60,7 @@ ggplot(independent_counts, aes(x = model_label, y = n, fill = model_label)) +
 
 ```
 
-Let's first look at how much risk and opportunity sentiment are in our dataset regarding climate change. Opportunity sentiment is more prevalent than risk sentiment, indicating that the senate generally has a proactive stance on addressing challenges and pursuing solutions. This matches my idependent label visualization. Now let's look at a proportional distribution of sentiment by party. 
+As shown in my indepdent label visualization, opportunity sentiment is more prevalent than risk sentiment.
 
 ```{r}
 
@@ -133,40 +133,10 @@ sankeyNetwork(
 
 ```
 
-Based on these two plots, democratic and indepdent senators overwhelmingly view climate change as a very real challenge that they want to tackle. Republicans generally introduce risk while talking about climate change, meaning they do not believe in it or do not support tackling it. This visualization is slightly different. In the other visualizations, democrats and independents sentiment was uniformly opportunistic. Here, some risky sentiment has been introduced. Overall, the visualizations still get a clear message across. Our senators have been given ideology rankings. Let's analyze how sentiment changes as ideology ranks do. The ranks go from -1 to 1, with -1 being very liberal and 1 being very conservative. 
+These two plots mostly agree with the indepdent label plots. However, Democrats now have some risky sentiment and Republicans have a much larger split.
 
 ```{r}
 
-ggplot(df, aes(x = party, y = ideology_score, fill = party)) +
-  geom_violin(alpha = 0.7) +
-  geom_boxplot(width = 0.2, alpha = 0.7) +
-  scale_fill_manual(values = c("D" = "#00AEF3", 
-                              "R" = "#E81B23", 
-                              "I" = "#A45FE6")) +
-  labs(title = "Distribution of Ideology Scores by Party",
-       x = "Party",
-       y = "Ideology Score (-1 = Liberal, 1 = Conservative)") +
-  theme_minimal()
-
-```
-
-Democrat senators exhibit a more concentrated liberal ideology and Republicans displaying a wider range of ideology scores. This plot stayed the same since it did not involve sentiment.
-
-```{r}
-
-medians <- df %>%
-  group_by(party) %>%
-  summarise(median_ideology_score = median(ideology_score, na.rm = TRUE))
-
-print(medians)
-
-```
-
-The median ideology score for Democratic (D) senators is -0.357, which falls within the moderately liberal range. The median ideology score for Independent (I) senators is -0.338, which is very close to the Democratic senators and also falls within the moderately liberal range. The median ideology score for Republican (R) senators is 0.538, which is in the moderately conservative range.
-
-```{r}
-
-# Create ideology bins
 bins <- c(-1.0, -0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
 labels <- c(
   "-1.0 to -0.8", "-0.8 to -0.6", "-0.6 to -0.4", "-0.4 to -0.2",
@@ -174,7 +144,6 @@ labels <- c(
   "0.6 to 0.8", "0.8 to 1.0"
 )
 
-# Add ideology bins and calculate proportions
 grouped_data <- df %>%
   filter(!is.na(model_label)) %>%
   mutate(
@@ -256,7 +225,7 @@ ggplot(heatmap_data, aes(x = model_label, y = ideology_bin, fill = percentage)) 
 
 ```
 
-Senators with more liberal ideology scores overwhelmingly demonstrate an opportunity based sentiment. In contrast, as the ideology scores become more conservative, the risk sentiment starts to dominate, suggesting a more cautious or skeptical perspective. These plots still show the relationship correctly, however in this plot the ideology bin 0.4 to 0.8 has more mixed sentiment when in my indepdent label plot, this category was skewed risk sentiment.
+The heatmap does hold the relationship held in the indepdent label plot. However, in the indepdent plot, 0.2 to 0.4 was all green. Another big difference is the 0.8 to 1.0 showing a 33/66 split whereas the indepdent labels showed a 0/100 split. The model's visualizations show that the top conservative score is not associated with the most risky sentiment.
 
 To test this relationship between ideology and sentiment, a correlation analysis would be beneficial. 
 
@@ -269,107 +238,9 @@ print(ideology_correlation)
 
 ```
 
-The result of the correlation test is -0.560935. This is much less strong than the -0.8 value I got in my independent label analysis. This means that the model did not produce as telling of a model. 
+The result of the correlation test is -0.5686831. This is less strong than the -0.8 value I got in my independent label analysis. This means that the model did not produce as telling of a model. 
 
 Let's do some analysis by region now, starting with some maps. 
-
-```{r}
-
-df <- read.csv("../Data/processed-data/Senators_sentiment.csv")
-
-library(dplyr)
-library(usmap)
-library(ggplot2)
-
-df <- df %>%
-  mutate(state = tolower(state.name[match(state, state.abb)]))
-
-state_senators <- df %>%
-  distinct(state, party) %>%
-  group_by(state) %>%
-  summarise(
-    party_composition = case_when(
-      all(party == "R") ~ "Republican",
-      all(party == "D") ~ "Democrat",
-      any(party == "I") & all(party %in% c("I", "D")) ~ "Split (Independent & Democrat)", 
-      any(party == "I") & all(party %in% c("I", "R")) ~ "Split (Independent & Republican)",
-      TRUE ~ "Split (Republican & Democrat)"
-    ),
-    .groups = "drop"
-  )
-
-state_senators <- state_senators[!is.na(state_senators$party_composition), ]
-
-party_colors <- c(
-  "Republican" = "red",
-  "Democrat" = "blue",
-  "Split (Independent & Democrat)" = "yellow",
-  "Split (Independent & Republican)" = "orange",
-  "Split (Republican & Democrat)" = "purple"
-)
-
-# Plot Map
-plot_usmap(data = state_senators, values = "party_composition", regions = "states") +
-  scale_fill_manual(
-    values = party_colors,
-    name = "Party Composition",
-    na.value = "white"
-  ) +
-  labs(
-    title = "Senator Party Composition by State",
-    subtitle = "Republican, Democrat, Independent, or Split"
-  ) +
-  theme_minimal() +
-  theme(
-    legend.position = "right",
-    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
-    plot.subtitle = element_text(hjust = 0.5, size = 12),
-    panel.background = element_rect(fill = "white"),
-    panel.grid = element_blank()
-  )
-
-```
-
-Most states elect senators from the same party, with the exception of Wisconsin, Pennsylvania, Maine, and Vermont. This map did not change as sentimet was not introduced.
-
-```{r}
-
-df <- read.csv("../Data/processed-data/Senators_sentiment.csv")
-
-df <- df %>%
-  mutate(state = tolower(state.name[match(state, state.abb)])) 
-
-state_senators <- df %>%
-  group_by(state) %>%
-  summarise(
-    avg_ideology_score = mean(ideology_score, na.rm = TRUE),  
-    .groups = "drop"
-  )
-
-plot_usmap(data = state_senators, values = "avg_ideology_score", regions = "states") +
-  scale_fill_gradient2(
-    low = "#3097ff",   # Liberal (-1)
-    mid = "white",  # Neutral (0)
-    high = "red",    # Conservative (1)
-    midpoint = 0,    # Center the gradient around 0
-    name = "Avg. Ideology Score"
-  ) +
-  labs(
-    title = "Average Ideology Score of Senators by State",
-    subtitle = "Blue = More Liberal, Red = More Conservative"
-  ) +
-  theme_minimal() +
-  theme(
-    legend.position = "right",
-    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
-    plot.subtitle = element_text(hjust = 0.5, size = 12),
-    panel.background = element_rect(fill = "white"),
-    panel.grid = element_blank()
-  )
-
-```
-
-The map shows that most states have senators with more moderate ideological leanings, reflecting a balance of Democratic and Republican views. However, a few states have senators with more extreme liberal or conservative positions. This ideological polarization in those states could make it harder for their senators to find common ground and work together on climate change. This map did not change as sentiment was not introduced. 
 
 ```{r}
 
@@ -419,7 +290,7 @@ plot_usmap(data = state_sentiment, values = "sentiment_label", regions = "states
 
 ```
 
-Texas, Wisconsin, West Virginia, Kentucky, and Tennessee now have mixed sentiment. Wisconsin is the only state that previously had mixed sentiment out of these states. Based on independent labels, Pennsylvania, Alaska, and South Dakota should have mixed sentiment. The model's labels also classified Utah as having positive sentiment when the indepdent labels claim that it should be negative sentiment. 
+Texas, Wisconsin, Iowa, Tennessee, Oklahoma, South Dakota, and Colorado now have mixed sentiment. Wisconsin and South Dakota are the only state that previously had mixed sentiment out of these states. Based on independent labels, Pennsylvania, Alaska, and South Dakota should have mixed sentiment. The model's labels also classified a lot of states as having opportunistic sentiment when the indepdent labels claim that it should be negative sentiment. 
 
 ```{r}
 
@@ -444,7 +315,7 @@ ggplot(party_region_counts, aes(x = region, y = Count, fill = party)) +
 
 ```
 
-Northeast and West regions are more Democratic than Republican and Midwest and South regions are more Republican than Democratic. This chart did not change because sentiment was not a variable.
+This relationship is still preserved compared to the indepdently labeled model. 
 
 ```{r}
 
@@ -471,28 +342,7 @@ ggplot(sentiment_region_props, aes(x = region, y = Proportion, fill = as.factor(
 
 ```
 
-Northeast and West regions are more opportunity than risk and Midwest and South regions are more risk than opportunity. While it is not the same, the chart shows the same pattern that it previously showed. 
-
-```{r}
-
-# Boxplot for ideology score by region
-ggplot(df, aes(x = region, y = ideology_score, fill = region)) +
-  geom_boxplot(alpha = 0.7) +
-  scale_fill_brewer(palette = "Set3") +
-  labs(
-    title = "Ideology Score Distribution by Region",
-    x = "Region",
-    y = "Ideology Score (-1 = Liberal, 1 = Conservative)"
-  ) +
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "none"
-  )
-
-```
-
-The Northeast is predominantly liberal with minimal variation, while the West and Midwest exhibit the greatest ideological diversity, spanning from strongly liberal to strongly conservative. The South leans slightly conservative but is less polarized compared to other regions. This chart did not change because sentiment is not a variable.
+The relationships are still preserved.
 
 ```{r}
 
@@ -569,20 +419,7 @@ sankeyNetwork(
 
 ```
 
-These charts show that the Midwest and South have very mixed sentiment, which was not shown when looking at indepdent labels. The plot is accurate at showing that the Northeast and West have more opportunistic sentiment. 
-
-To confirm this relationship between region and sentiment, we will run a correlation analysis.
-
-```{r}
-
-# Correlation test between ideology score and sentiment
-ideology_correlation <- cor.test(df$ideology_score, df$model_label)
-print("\nCorrelation between Ideology Score and Sentiment:")
-print(ideology_correlation)
-
-```
-
-The correlation coefficient of -0.560935 indicates a moderate negative correlation between these two variables. This means that as a senator's ideology score increases, their sentiment tends to shift towards perceiving climate change in a risky way rather than an opportunistic way.
+This heatmap is not the same compared to the indepdent label plot. The only region that preserves the relationship is Northeast. 
 
 ## Conclusion
 

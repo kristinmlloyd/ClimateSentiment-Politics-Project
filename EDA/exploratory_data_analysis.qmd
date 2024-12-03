@@ -1,6 +1,6 @@
 ---
 title: "Exploratory Data Analysis"
-author: “Kristin Lloyd”
+author: "Kristin Lloyd"
 format: 
   html:
     toc: true
@@ -26,7 +26,7 @@ library(ggplot2)
 
 ```
 
-Let's load my raw dataset and look at my indepdent labels. 
+Let's load my raw dataset and look at my indepdent labels
 
 ```{r}
 
@@ -35,7 +35,7 @@ head(df)
 
 ```
 
-I want to make sure all senators are accounted for, let's look at senator by state.
+I want to make sure all senators are accounted for, let's look at senator by state
 
 ```{r}
 
@@ -80,7 +80,7 @@ ggplot(independent_counts, aes(x = sentiment, y = n, fill = sentiment)) +
 
 ```
 
-Let's first look at how much risk and opportunity sentiment are in our dataset regarding climate change. Opportunity sentiment is more prevalent than risk sentiment, indicating that the senate generally has a proactive stance on addressing challenges and pursuing solutions. Now let's look at a proportional distribution of sentiment by party. 
+Let's first look at how much risk and opportunity sentiment are in the dataset regarding climate change. Opportunity sentiment is more prevalent than risk sentiment, indicating that the senate generally has a proactive stance on addressing challenges and pursuing solutions. Now let's look at a proportional distribution of sentiment by party. 
 
 ```{r}
 
@@ -153,7 +153,7 @@ sankeyNetwork(
 
 ```
 
-Based on these two plots, democratic and indepdent senators overwhelmingly view climate change as a very real challenge that they want to tackle. Republicans generally introduce risk while talking about climate change, meaning they do not believe in it or do not support tackling it. However, there are different levels of being a Democrat and being a Republican. Our senators have been given ideology rankings. Let's analyze how sentiment changes as ideology ranks do. The ranks go from -1 to 1, with -1 being very liberal and 1 being very conservative. 
+Based on these two plots, Democrat and Indepdent senators overwhelmingly view climate change as a very real challenge that they want to tackle. Republicans generally introduce risk while talking about climate change, meaning they do not believe in it or do not support tackling it. However, there are different levels of being a Democrat and being a Republican. Our senators have been given ideology rankings. Let's analyze how sentiment changes as ideology ranks do. The ranks go from -1 to 1, with -1 being very liberal and 1 being very conservative. 
 
 ```{r}
 
@@ -170,7 +170,7 @@ ggplot(df, aes(x = party, y = ideology_score, fill = party)) +
 
 ```
 
-Democrat senators exhibit a more concentrated liberal ideology and Republicans displaying a wider range of ideology scores.
+Democrat senators exhibit a more concentrated liberal ideology and Republicans display a wider range of ideology scores.
 
 ```{r}
 
@@ -182,11 +182,11 @@ print(medians)
 
 ```
 
-The median ideology score for Democratic (D) senators is -0.357, which falls within the moderately liberal range. The median ideology score for Independent (I) senators is -0.338, which is very close to the Democratic senators and also falls within the moderately liberal range. The median ideology score for Republican (R) senators is 0.538, which is in the moderately conservative range.
+The median ideology score for Democrat senators is -0.357, which falls within the moderately liberal range. The median ideology score for Independent senators is -0.338, which is very close to the Democrat senators and also falls within the moderately liberal range. The median ideology score for Republican senators is 0.538, which is in the moderately conservative range.
 
 ```{r}
 
-# Create ideology bins
+# Create ideology ranges
 bins <- c(-1.0, -0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
 labels <- c(
   "-1.0 to -0.8", "-0.8 to -0.6", "-0.6 to -0.4", "-0.4 to -0.2",
@@ -194,7 +194,6 @@ labels <- c(
   "0.6 to 0.8", "0.8 to 1.0"
 )
 
-# Add ideology bins and calculate proportions
 grouped_data <- df %>%
   filter(!is.na(sentiment)) %>%
   mutate(
@@ -206,7 +205,7 @@ grouped_data <- df %>%
   group_by(ideology_bin) %>%
   mutate(Proportion = Count / sum(Count))
 
-# Mosaic Plot for Ideology Bins
+# Mosaic Plot
 ggplot(grouped_data, aes(x = ideology_bin, y = Proportion, fill = sentiment)) +
   geom_bar(stat = "identity", position = "fill") +
   scale_fill_manual(values = c("Risk" = "red", "Opportunity" = "#078d0f")) +
@@ -280,7 +279,6 @@ Senators with more liberal ideology scores overwhelmingly demonstrate an opportu
 
 ```{r}
 
-# Correlation test between ideology score and sentiment
 ideology_correlation <- cor.test(df$ideology_score, df$sentiment)
 print("\nCorrelation between Ideology Score and Sentiment:")
 print(ideology_correlation)
@@ -294,10 +292,6 @@ Let's do some analysis by region now, starting with some maps.
 ```{r}
 
 df <- read.csv("../Data/processed-data/Senators_sentiment.csv")
-
-library(dplyr)
-library(usmap)
-library(ggplot2)
 
 df <- df %>%
   mutate(state = tolower(state.name[match(state, state.abb)]))
@@ -387,7 +381,7 @@ plot_usmap(data = state_senators, values = "avg_ideology_score", regions = "stat
 
 ```
 
-The map shows that most states have senators with more moderate ideological leanings, reflecting a balance of Democratic and Republican views. However, a few states have senators with more extreme liberal or conservative positions. This ideological polarization in those states could make it harder for their senators to find common ground and work together on climate change.  
+The map shows that most states have senators with more moderate ideology, reflecting a balance of Democrat and Republican views. However, a few states have senators with more extreme liberal or conservative views. This ideology polarization in those states could make it harder for their senators to find common ground and work together on climate change.  
 
 ```{r}
 
@@ -437,10 +431,7 @@ plot_usmap(data = state_sentiment, values = "sentiment_label", regions = "states
 
 ```
 
-Wisconsin had mixed senators, one republican and one democrat, and and had an average ideology score of around 0 since it was shaded white in the previous plot. On this plot, we see that it has mixed sentiment which makes sense. 
-Alaska has mixed sentiment because despite both senators being republican, Lisa Murkowski is a strong supporter of combating climate change in Alaska. She says that she has seen the devastating effects climate change has had on the state. 
-Meanwhile, Dan Sullivan often talks about the United States prioritizing climate change over other issues, claiming that climate change is not as important. This is risky sentiment because he is not acknowledging how serious climate change is.
-South Dakota and North Carolina also have mixed sentiment.
+Wisconsin had mixed senators, one Republican and one Democrat, and and had an average ideology score of around 0 since it was shaded white in the previous plot. On this plot, we see that Wisconsin has mixed sentiment which makes sense. Alaska has mixed sentiment because despite both senators being Republican, Lisa Murkowski is a strong supporter of combating climate change in Alaska. She says that she has seen the devastating effects climate change has had on the state. Meanwhile, Dan Sullivan often talks about his distaste for the United States prioritizing climate change over other issues. This is risky sentiment because he is not acknowledging how serious climate change is. South Dakota and North Carolina also have mixed sentiment.
 
 ```{r}
 
@@ -465,7 +456,7 @@ ggplot(party_region_counts, aes(x = region, y = Count, fill = party)) +
 
 ```
 
-Northeast and West regions are more Democratic than Republican and Midwest and South regions are more Republican than Democratic.
+Northeast and West regions are more Democratic and Midwest/South regions are more Republican.
 
 ```{r}
 
@@ -492,7 +483,7 @@ ggplot(sentiment_region_props, aes(x = region, y = Proportion, fill = as.factor(
 
 ```
 
-Northeast and West regions are more opportunity than risk and Midwest and South regions are more risk than opportunity.
+Northeast/West regions are more opportunistic than risky and Midwest/South regions are more risky than opportunistic.
 
 ```{r}
 
@@ -551,7 +542,7 @@ ggplot(heatmap_data, aes(x = sentiment, y = region, fill = percentage)) +
 
 ```
 
-The Northeast is the most optimistic region, strongly favoring opportunity. The Midwest is the most divided, highlighting significant differences in sentiment within the region. The West and South share similar sentiment distributions, leaning optimistic but still spreading risk regarding climate change.
+The Northeast is the most optimistic region, strongly favoring opportunity. The Midwest is the most divided, highlighting significant differences in sentiment within the region. The West and South share similar mixed sentiment distributions.
 
 ```{r}
 
@@ -591,58 +582,6 @@ sankeyNetwork(
 )
 
 ```
-
-```{r}
-
-flows_region <- df %>%
-  mutate(
-    sentiment_label = ifelse(sentiment == 1, "Opportunity", "Risk")  
-  ) %>%
-  group_by(region, sentiment_label) %>%
-  summarise(value = n(), .groups = "drop") 
-
-nodes_region <- data.frame(
-  name = c(
-    unique(flows_region$region),     
-    unique(flows_region$sentiment_label)  
-  )
-)
-
-links_region <- flows_region %>%
-  mutate(
-    source = match(region, nodes_region$name) - 1,       
-    target = match(sentiment_label, nodes_region$name) - 1,  
-    value = value                                   
-  )
-
-sankeyNetwork(
-  Links = links_region, 
-  Nodes = nodes_region,
-  Source = "source",
-  Target = "target",
-  Value = "value", 
-  NodeID = "name",
-  sinksRight = TRUE, 
-  nodeWidth = 30,
-  fontSize = 12, 
-  height = 600,
-  width = 1000
-)
-
-```
-
-To confirm this relationship between region and sentiment, we will run a correlation analysis.
-
-```{r}
-
-# Correlation test between ideology score and sentiment
-ideology_correlation <- cor.test(df$ideology_score, df$sentiment)
-print("\nCorrelation between Ideology Score and Sentiment:")
-print(ideology_correlation)
-
-```
-
-The correlation coefficient of -0.813 indicates a strong negative correlation between these two variables. This means that as a senator's ideology score increases, their sentiment tends to shift towards perceiving climate change in a risky way rather than an opportunistic way.
 
 ## Conclusion
 
