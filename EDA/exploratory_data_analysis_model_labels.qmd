@@ -30,7 +30,7 @@ Let's load my processed dataset and look at my model labels.
 
 ```{r}
 
-df <- read.csv("Data/processed-data/Senators_sentiment.csv")
+df <- read.csv("../Data/processed-data/Senators_sentiment.csv")
 head(df)
 
 ```
