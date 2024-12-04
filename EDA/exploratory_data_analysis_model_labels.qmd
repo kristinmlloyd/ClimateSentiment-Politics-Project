@@ -423,4 +423,4 @@ This heatmap is not the same compared to the indepdent label plot. The only regi
 
 ## Conclusion
 
-The analysis reveals a divide in how U.S. senators view climate change. However, the model did not do as good of a job as the independent label visualizations did at showing the correlation between ideology and sentiment.
+The analysis reveals a divide in how U.S. senators view climate change. However, the model did not do as good of a job as the independent label visualizations did at showing the correlation between ideology and sentiment.  
