@@ -98,7 +98,7 @@ Next, let’s examine the most frequently occurring words by Democrat and Republ
 word_party_frequencies <- df %>%
   mutate(words = strsplit(as.character(dominant_topic), ",|\\s+")) %>%
   unnest(words) %>%
-  filter(words != "", !words %in% c("and", "the")) %>%
+  filter(words != "", !words %in% c("and", "the", "climate", "change")) %>%
   group_by(party, words) %>%
   summarise(
     frequency = n(),
@@ -131,7 +131,7 @@ ggplot(top_party_words, aes(x = reorder(words, frequency),
 
 ```
 
-While there are not major differences, one observation is that the word "new" appears in Republican's top ten words. This is interesting because it suggests that Republicans may want to find a new way to approach climate change. Democrats often want to take aggression action whereas Republicans want to try new approaches.
+While there are not major differences, one observation is that the word "new" appears in Republican's top ten words. This is interesting because it suggests that Republicans may want to find a new way to approach climate change. Democrats often want to take aggression action whereas Republicans want to try new approaches. Economy is only in Democrat senators top 10 words while job is only in Republican senators top 10 words. Action and crisis are at the bottom of the Republican senator's list. Democrats frequently use the words, "need", "action", "act", and "threat" which show their urgency towards climate change. Republican senators also use "policy" and "Biden" lot, possibly suggesting that they want to implement specific policies and do not like what is currenly being done in Biden's administration. These words are all up for interpretation, but given the fact that Republican senators often have risky sentiment, we can assume there is likely a difference in how each senator uses the words on the list.
 
 ```{r}
 
