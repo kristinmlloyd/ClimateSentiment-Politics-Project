@@ -423,4 +423,4 @@ This heatmap is not the same compared to the indepdent label plot. The only regi
 
 ## Conclusion
 
-The analysis reveals a divide in how U.S. senators view climate change. Democrats and Independents tend to see it in an opportunistic way, while Republicans are more likely to view it in a risky way. This divide is reflected in the negative correlation between a senator's ideology and their climate sentiment. The regional analysis shows the Northeast and West are more opportunity-focused, while the Midwest and South have a mix of risky and opportunistic perspectives. Some states have a more balanced, "mixed" sentiment, suggesting potential for bipartisan cooperation.
+The analysis reveals a divide in how U.S. senators view climate change. However, the model did not do as good of a job as the independent label visualizations did at showing the correlation between ideology and sentiment.
