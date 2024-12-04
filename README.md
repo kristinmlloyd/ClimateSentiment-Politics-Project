@@ -13,6 +13,9 @@ HTML's are in the Outputs folder in EDA, and should be looked at in the order
 References:
 
 Sentiment model adapted from https://github.com/MichaelOmosebi/Sentiments-Analysis-Climate-Change
+
 Ideology scores from https://www.c-span.org/congress/members/?congress=119&chamber=senate&find-name=all&find-state=all&find-party=all&status=freshman&sort-names=name&all
+
 Sources for statements are in test.csv in Data folder
+
 Emotion model from huggingface: SamLowe/roberta-base-go_emotions
