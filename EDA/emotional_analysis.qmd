@@ -197,3 +197,5 @@ ggplot(emotion_counts, aes(x = reorder(emotion, proportion), y = proportion)) +
   )
 
 ```
+
+Donald Trumps most common emotion besides neutral is annoyance which probably contributes to risk sentiment. 
